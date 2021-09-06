@@ -52,6 +52,7 @@
 #define AI_TOOLS_API_VERSION_MICRO      (0)
 #endif
 
+/*****************************************************************************/
 #define AI_TOOLS_API_VERSION \
   AI_VERSION(AI_TOOLS_API_VERSION_MAJOR, \
              AI_TOOLS_API_VERSION_MINOR, \
@@ -60,7 +61,10 @@
 #define AI_TOOLS_API_VERSION_1_3 \
   AI_VERSION(1, 3, 0)
 
-/******************************************************************************/
+#define AI_TOOLS_API_VERSION_1_4 \
+  AI_VERSION(1, 4, 0)
+
+/*****************************************************************************/
 #ifdef __cplusplus
 #define AI_API_DECLARE_BEGIN extern "C" {
 #define AI_API_DECLARE_END }
@@ -70,11 +74,21 @@
 #define AI_API_DECLARE_END      /* AI_API_DECLARE_END   */
 #endif
 
-/******************************************************************************/
+/*****************************************************************************/
+#define AI_FLAG_NONE            (0x0)
+
+/*****************************************************************************/
 #define AI_CONCAT_ARG(a, b)     a ## b
 #define AI_CONCAT(a, b)         AI_CONCAT_ARG(a, b)
 
-/******************************************************************************/
+/*****************************************************************************/
+#define AI_MAGIC_SIGNATURE \
+  (0xa1facade)
+
+#define AI_PACK(...) \
+  __VA_ARGS__
+
+/*****************************************************************************/
 #if defined(_MSC_VER)
   #define AI_API_ENTRY          __declspec(dllexport)
   #define AI_ALIGNED(x)         /* AI_ALIGNED(x) */
@@ -112,7 +126,10 @@
 
 #define AI_LEGACY                     /* AI_LEGACY */
 
-#if defined(__GNUC__) && !defined(__clang__)
+#define AI_MAGIC_MARKER               (0xA1FACADE)
+
+
+#if ((defined(__GNUC__) && !defined(__clang__)) || defined(__cplusplus))
   #define AI_STRUCT_INIT              {}
   #define AI_C_ARRAY_INIT             {}
 #else
@@ -129,11 +146,37 @@
   (ai_custom_type_signature)((AI_IS_UNSIGNED(type)) \
     ? (0x80|(sizeof(type)&0x7f)) : (sizeof(type)&0x7f))
 
-#define AI_NETWORK_PARAMS_INIT(params_, activations_) { \
-  .params = params_, \
-  .activations = activations_ }
+/*! network buffers struct handlers *******************************************/
+#ifdef __cplusplus
 
-/*! ai_intq_info struct handlers **********************************************/
+#define AI_NETWORK_PARAMS_INIT(params_, activations_) \
+{ \
+  params_, activations_ \
+}
+
+#define AI_NETWORK_BUFFERS_INIT(params_buffers_, activations_buffers_) \
+{ \
+  AI_MAGIC_SIGNATURE, AI_PACK(params_buffers_), AI_PACK(activations_buffers_) \
+}
+
+#else
+
+#define AI_NETWORK_PARAMS_INIT(params_, activations_) \
+{ \
+  .params = params_, \
+  .activations = activations_ \
+}
+
+#define AI_NETWORK_BUFFERS_INIT(weights_buffers_, activations_buffers_) \
+{ \
+  .map_signature = AI_MAGIC_SIGNATURE, \
+  .map_weights = AI_PACK(weights_buffers_), \
+  .map_activations = AI_PACK(activations_buffers_) \
+}
+
+#endif    // __cplusplus
+
+/*! ai_intq_info struct handlers *********************************************/
 #define INTQ_CONST    const
 // #define INTQ_CONST
 
@@ -157,7 +200,7 @@
   (((list_) && (list_)->info && ((pos_)<(list_)->size)) \
    ? ((type_*)((list_)->info->zeropoint))[(pos_)] : 0)
 
-/*! ai_buffer format handlers *************************************************/
+/*! ai_buffer format handlers ************************************************/
 
 /*!
  * @enum buffer format definition
@@ -167,13 +210,13 @@
  */
 typedef int32_t ai_buffer_format;
 
-/*! ai_buffer_meta flags ******************************************************/
+/*! ai_buffer_meta flags *****************************************************/
 #define AI_BUFFER_META_HAS_INTQ_INFO        (0x1U << 0)
 #define AI_BUFFER_META_FLAG_SCALE_FLOAT     (0x1U << 0)
 #define AI_BUFFER_META_FLAG_ZEROPOINT_U8    (0x1U << 1)
 #define AI_BUFFER_META_FLAG_ZEROPOINT_S8    (0x1U << 2)
 
-/*! ai_buffer format variable flags *******************************************/
+/*! ai_buffer format variable flags ******************************************/
 #define AI_BUFFER_FMT_TYPE_NONE          (0x0)
 #define AI_BUFFER_FMT_TYPE_FLOAT         (0x1)
 #define AI_BUFFER_FMT_TYPE_Q             (0x2)
@@ -182,6 +225,8 @@ typedef int32_t ai_buffer_format;
 #define AI_BUFFER_FMT_FLAG_CONST         (0x1U<<30)
 #define AI_BUFFER_FMT_FLAG_STATIC        (0x1U<<29)
 #define AI_BUFFER_FMT_FLAG_IS_IO         (0x1U<<27)
+#define AI_BUFFER_FMT_FLAG_PERSISTENT    (0x1U<<29)
+
 
 #define AI_BUFFER_FMT_PACK(value_, mask_, bits_) \
   ( ((value_) & (mask_)) << (bits_) )
@@ -294,6 +339,50 @@ typedef int32_t ai_buffer_format;
   .meta_info = NULL \
 }
 
+/*****************************************************************************/
+#define AI_NETWORK_BUFFERS_FIELD_DECLARE \
+  ai_signature      map_signature;      /*! structure signature (required!) */ \
+  ai_buffer_array   map_weights;        /*! info about weights array buffers (required!) */ \
+  ai_buffer_array   map_activations;    /*! info about activations array buffers (required!) */
+
+#define AI_NETWORK_PARAMS_FIELDS_DECLARE \
+union { \
+  struct { \
+    ai_buffer         params;         /*! info about params buffer(required!) */ \
+    ai_buffer         activations;    /*! info about activations buffer (required!) */ \
+  }; \
+  struct { \
+    AI_NETWORK_BUFFERS_FIELD_DECLARE \
+  }; \
+};
+
+#define AI_BUFFER_ARRAY_OBJ_INIT(flags_, size_, buffer_array_) \
+{ \
+  .flags = (ai_u16)(flags_), \
+  .size = (ai_u16)(size_), \
+  .buffer = (ai_buffer*)(buffer_array_) \
+}
+
+#define AI_BUFFER_ARRAY_OBJ_INIT_STATIC(flags_, size_, ...) \
+{ \
+  .flags = (ai_u16)(flags_), \
+  .size = (ai_u16)(size_), \
+  .buffer = (ai_buffer*)((ai_buffer[(size_)]){__VA_ARGS__}) \
+}
+
+#define AI_BUFFER_ARRAY_SANE(buf_array_) \
+  ((buf_array_) && ((buf_array_)->buffer) && ((buf_array_)->size>0))
+
+#define AI_BUFFER_ARRAY_FLAGS(buf_array_) \
+  ((AI_BUFFER_ARRAY_SANE(buf_array_)) ? (buf_array_)->flags : AI_FLAG_NONE)
+
+#define AI_BUFFER_ARRAY_SIZE(buf_array_) \
+  ((AI_BUFFER_ARRAY_SANE(buf_array_)) ? (buf_array_)->size : 0)
+
+#define AI_BUFFER_ARRAY_ITEM(buf_array_, pos_) \
+  ((AI_BUFFER_ARRAY_SANE(buf_array_)) ? ((buf_array_)->buffer + (pos_)) : NULL)
+
+
 /*!
  * @enum buffer formats enum list
  * @ingroup ai_platform
@@ -306,8 +395,11 @@ enum {
 
   AI_BUFFER_FORMAT_U8       = AI_BUFFER_FMT_SET(AI_BUFFER_FMT_TYPE_Q, 0, 0,  8, 0),
   AI_BUFFER_FORMAT_U16      = AI_BUFFER_FMT_SET(AI_BUFFER_FMT_TYPE_Q, 0, 0, 16, 0),
+  AI_BUFFER_FORMAT_U32      = AI_BUFFER_FMT_SET(AI_BUFFER_FMT_TYPE_Q, 0, 0, 32, 0),
+
   AI_BUFFER_FORMAT_S8       = AI_BUFFER_FMT_SET(AI_BUFFER_FMT_TYPE_Q, 1, 0,  8, 0),
   AI_BUFFER_FORMAT_S16      = AI_BUFFER_FMT_SET(AI_BUFFER_FMT_TYPE_Q, 1, 0, 16, 0),
+  AI_BUFFER_FORMAT_S32      = AI_BUFFER_FMT_SET(AI_BUFFER_FMT_TYPE_Q, 1, 0, 32, 0),
 
   AI_BUFFER_FORMAT_Q        = AI_BUFFER_FMT_SET(AI_BUFFER_FMT_TYPE_Q, 1, 0,  0, 0),
   AI_BUFFER_FORMAT_Q7       = AI_BUFFER_FMT_SET(AI_BUFFER_FMT_TYPE_Q, 1, 0,  8, 7),
@@ -320,7 +412,7 @@ enum {
   AI_BUFFER_FORMAT_BOOL     = AI_BUFFER_FMT_SET(AI_BUFFER_FMT_TYPE_BOOL, 0, 0, 8, 0),
 };
 
-/******************************************************************************/
+/*****************************************************************************/
 #define AI_ERROR_INIT(type_, code_)   { \
             .type = AI_ERROR_##type_, \
             .code = AI_ERROR_CODE_##code_ }
@@ -334,36 +426,39 @@ enum {
   (((major_)<<24) | ((minor_)<<16) | ((micro_)<<8))
 
 
-typedef uint8_t ai_custom_type_signature;
+typedef uint8_t       ai_custom_type_signature;
 
-typedef void* ai_handle;
+typedef void*         ai_handle;
+typedef const void*   ai_handle_const;
 
-typedef void (*ai_handle_func)(void*);
+typedef float         ai_float;
+typedef double        ai_double;
 
-typedef float ai_float;
-typedef double ai_double;
+typedef bool          ai_bool;
 
-typedef bool ai_bool;
+typedef char          ai_char;
 
-typedef uint32_t ai_size;
+typedef uint32_t      ai_size;
 
-typedef uintptr_t ai_uptr;
+typedef uintptr_t     ai_uptr;
 
-typedef unsigned int ai_uint;
-typedef uint8_t  ai_u8;
-typedef uint16_t ai_u16;
-typedef uint32_t ai_u32;
-typedef uint64_t ai_u64;
+typedef unsigned int  ai_uint;
+typedef uint8_t       ai_u8;
+typedef uint16_t      ai_u16;
+typedef uint32_t      ai_u32;
+typedef uint64_t      ai_u64;
 
-typedef int     ai_int;
-typedef int8_t  ai_i8;
-typedef int16_t ai_i16;
-typedef int32_t ai_i32;
-typedef int64_t ai_i64;
+typedef int           ai_int;
+typedef int8_t        ai_i8;
+typedef int16_t       ai_i16;
+typedef int32_t       ai_i32;
+typedef int64_t       ai_i64;
 
-typedef uint32_t ai_signature;
+typedef uint32_t      ai_signature;
 
-/******************************************************************************/
+typedef void (*ai_handle_func)(ai_handle);
+
+/*****************************************************************************/
 /*!
  * @struct ai_error
  * @ingroup ai_platform
@@ -374,7 +469,7 @@ typedef struct ai_error_ {
   ai_u32   code : 24;   /*!< Error code represented by @ref ai_error_code */
 } ai_error;
 
-/******************************************************************************/
+/*****************************************************************************/
 /*!
  * @struct ai_intq_info
  * @ingroup ai_platform
@@ -399,7 +494,7 @@ typedef struct ai_intq_info_list_ {
                                    * associated to the intq_info list */
 } ai_intq_info_list;
 
-/******************************************************************************/
+/*****************************************************************************/
 /*!
  * @struct ai_buffer_meta_info
  * @ingroup ai_platform
@@ -429,6 +524,17 @@ typedef struct ai_buffer_ {
   ai_buffer_meta_info*    meta_info;  /*!< pointer to buffer metadata info */
 } ai_buffer;
 
+/*!
+ * @struct ai_buffer_array
+ * @ingroup ai_platform
+ * @brief Array of @ref ai_buffer.
+ */
+typedef struct ai_buffer_array_ {
+  ai_u16                  flags;      /*!< buffer array flags */
+  ai_u16                  size;       /*!< buffer array size */
+  ai_buffer*              buffer;     /*!< buffer array buffers pointer */
+} ai_buffer_array;
+
 /* enums section */
 
 /*!
@@ -447,6 +553,8 @@ typedef enum {
   AI_ERROR_INVALID_OUTPUT               = 0x13,
   AI_ERROR_INVALID_PARAM                = 0x14,
   AI_ERROR_INVALID_SIGNATURE            = 0x15,
+  AI_ERROR_INVALID_SIZE                 = 0x16,
+  AI_ERROR_INVALID_VALUE                = 0x17,
   AI_ERROR_INIT_FAILED                  = 0x30,
   AI_ERROR_ALLOCATION_FAILED            = 0x31,
   AI_ERROR_DEALLOCATION_FAILED          = 0x32,
@@ -493,12 +601,21 @@ typedef struct ai_platform_version_ {
  * @struct ai_network_params
  * @ingroup ai_platform
  *
- * Datastructure to pass parameters to the network initialization.
+ * Datastructure to pass parameters during network initialization.
  */
 typedef struct ai_network_params_ {
-  ai_buffer   params;         /*! info about params buffer(required!) */
-  ai_buffer   activations;    /*! info about activations buffer (required!) */
+  AI_NETWORK_PARAMS_FIELDS_DECLARE
 } ai_network_params;
+
+/*!
+ * @struct ai_network_buffers
+ * @ingroup ai_platform
+ *
+ * Datastructure to pass network buffers during network initialization.
+ */
+typedef struct ai_network_buffers_ {
+  AI_NETWORK_BUFFERS_FIELD_DECLARE
+} ai_network_buffers;
 
 /*!
  * @struct ai_network_report
@@ -530,8 +647,7 @@ typedef struct ai_network_report_ {
   ai_buffer*                      inputs;
   ai_buffer*                      outputs;
 
-  ai_buffer                       activations;
-  ai_buffer                       params;
+  AI_NETWORK_PARAMS_FIELDS_DECLARE
 
   ai_u32                          n_nodes;
 
@@ -588,5 +704,35 @@ typedef enum {
   AI_PAD_REFLECT,
   AI_PAD_EDGE,
 } ai_pad_mode;
+
+
+/*! ai_platform public APIs **************************************************/
+
+/*!
+ * @brief get total size in bytes of a buffer array.
+ * @ingroup ai_platform
+ * @param barray a pointer to the buffer array
+ * @return the total size in bytes of all the buffer arrays
+ */
+AI_API_ENTRY
+ai_bool ai_buffer_array_is_empty(const ai_buffer_array* barray);
+
+/*!
+ * @brief get total size in bytes of a buffer array.
+ * @ingroup ai_platform
+ * @param barray a pointer to the buffer array
+ * @return the total size in bytes of all the buffer arrays
+ */
+AI_API_ENTRY
+ai_bool ai_buffer_array_is_valid(const ai_buffer_array* barray);
+
+/*!
+ * @brief get total size in bytes of a buffer array.
+ * @ingroup ai_platform
+ * @param barray a pointer to the buffer array
+ * @return the total size in bytes of all the buffer arrays
+ */
+AI_API_ENTRY
+ai_size ai_buffer_array_get_byte_size(const ai_buffer_array* barray);
 
 #endif /*AI_PLATFORM_H*/

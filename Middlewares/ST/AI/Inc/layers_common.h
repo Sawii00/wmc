@@ -52,9 +52,6 @@
 
 #define AI_LAYER_TYPE_NAME(type_) \
   ai_layer_type_name(AI_LAYER_TYPE(type_))
-  
-#define AI_LAYER_TYPE_IS_VALID(type_) \
-  ai_layer_type_is_valid(AI_LAYER_TYPE(type_))
 
 
 #if (AI_TOOLS_API_VERSION <= AI_TOOLS_API_VERSION_1_3)

@@ -105,19 +105,41 @@ LAYER_ENTRY(GATHER, LAYER_ID(28), gather, forward_gather, NULL, NULL)
 LAYER_ENTRY(PACK, LAYER_ID(29), pack, forward_pack, NULL, NULL)
 /*!< Unpack layer */
 LAYER_ENTRY(UNPACK, LAYER_ID(30), unpack, forward_unpack, NULL, NULL)
+/*!< ArgMax layer */
+LAYER_ENTRY(ARGMAX, LAYER_ID(31), argmax, forward_argmax, NULL, NULL)
+/*!< ArgMin layer */
+LAYER_ENTRY(ARGMIN, LAYER_ID(32), argmin, forward_argmin, NULL, NULL)
+/*!< Cast Neural Network Layer */
+LAYER_ENTRY(CAST, LAYER_ID(33), cast, forward_cast, NULL, NULL)
+/*!< iForest layer */
+LAYER_ENTRY(IFOREST, LAYER_ID(34), iforest, forward_iforest, NULL, NULL)
+/*!< SVM Regressor layer */
+LAYER_ENTRY(SVMREG, LAYER_ID(35), svmreg, forward_svm_regressor, NULL, NULL)
+/*!< ArrayFeatureExtractor layer */
+LAYER_ENTRY(ARRAYFEATUREEXTRACTOR, LAYER_ID(36), arrayfeatureextractor, forward_arrayfeatureextractor, NULL, NULL)
+/*!< SVM Classifier (SVC) layer */
+LAYER_ENTRY(SVC, LAYER_ID(37), svc, forward_svc, NULL, NULL)
+/*!< SVM Classifier (SVC) layer */
+LAYER_ENTRY(ZIPMAP, LAYER_ID(38), zipmap, forward_zipmap, NULL, NULL)
 #ifdef USE_OPERATORS
 /*!< Container layer for operators */
-LAYER_ENTRY(CONTAINER, LAYER_ID(31), container, forward_container, NULL, NULL)
+LAYER_ENTRY(CONTAINER, LAYER_ID(64), container, forward_container, NULL, NULL)
 /*!< Container layer for operators */
-LAYER_ENTRY(LAMBDA, LAYER_ID(32), lambda, forward_lambda, NULL, NULL)
+LAYER_ENTRY(LAMBDA, LAYER_ID(65), lambda, forward_lambda, NULL, NULL)
 #endif
 
+/*****************************************************************************/
 /*!< Base Stateful Layer type */
 LAYER_ENTRY(STATEFUL, LAYER_STATEFUL_ID(0), stateful, NULL, NULL, NULL)
 /*!< Long Short Time Memory layer */
 LAYER_ENTRY(LSTM, LAYER_STATEFUL_ID(1), lstm, forward_lstm, init_lstm, destroy_lstm)
 /*!< Custom layer */
 LAYER_ENTRY(CUSTOM, LAYER_STATEFUL_ID(2), custom, NULL, NULL, NULL)
+
+/*!< Stateless Template layer declaration */
+/* LAYER_ENTRY(TEMPLATE, LAYER_ID(XX), template, forward_template, NULL, NULL) */
+/*!< Stateful Template layer declaration */
+/* LAYER_ENTRY(TEMPLATE, LAYER_STATEFUL_ID(XX), template, forward_template, init_template, destroy_template) */
 
 #undef LAYER_ENTRY
 #undef LAYER_ID

@@ -1,69 +1,49 @@
-/* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
-
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
+#include "arm_math.h"
+#include "wmc_processing.h"
 
 /* Private variables ---------------------------------------------------------*/
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .stack_size = 128 * 4,
+uint8_t ChangeApplicationMode = 0;
+uint8_t DoubleClick = 0;
+
+uint8_t AudioLogEnabled = 0;
+uint8_t WMCEnabled = 1;
+
+osSemaphoreId_t enableSem_id;
+osSemaphoreId_t AUDIOLOGSem_id;
+osSemaphoreId_t WMCSem_id;
+
+osTimerId_t doubleClickTimer_id;
+
+osThreadId_t mainThread_id;
+const osThreadAttr_t mainThread_attr = {
+  .name = "mainThread",
+  .stack_size = 128 * 9,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* USER CODE BEGIN PV */
 
-/* USER CODE END PV */
+/* TODO: Change copying from SENSING1 */
+#define FILL_BUFFER_SIZE 1024
+#define PCM_AUDIO_IN_SAMPLES     (AUDIO_SAMPLING_FREQUENCY / 1000)
+float32_t Proc_Buffer_f[FILL_BUFFER_SIZE];
+uint16_t PCM_Buffer[PCM_AUDIO_IN_SAMPLES];
+int16_t Fill_Buffer[2048];
+static volatile uint32_t runs = 0;
+static uint32_t index_buff_fill = 0;
+static volatile uint8_t add_samples = 0;
+extern uint16_t IntermediateBuffer[INTERMEDIATE_BUFFER_SIZE];
+extern float32_t Spectrogram[16896];
 
 /* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-void StartDefaultTask(void *argument);
-
-/* USER CODE BEGIN PFP */
-
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
+static void MainThread(void *argument);
+static void ArduinoTriggerInit(void);
+static void InitSensorTilebox(void);
+static void DoubleClickTimerCallback(void *argument);
+static void SystemClock_Config(void);
+static void WMC_RecordingProcess(void);
+void WMC_StartRecording(void);
+void WMC_StopRecording(void);
 
 /**
   * @brief  The application entry point.
@@ -71,171 +51,402 @@ void StartDefaultTask(void *argument);
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration--------------------------------------------------------*/
-
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+  /*Initialize trigger for the Arduino Uno */
+  //ArduinoTriggerInit();
 
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  /* USER CODE BEGIN 2 */
-
-  /* USER CODE END 2 */
+  /* Initialize compontents of the SensorTile.box */
+  InitSensorTilebox();
 
   /* Init scheduler */
   osKernelInitialize();
 
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
-
-  /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
-
-  /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
-  /* USER CODE END RTOS_EVENTS */
+  /* Create the thread */
+  mainThread_id = osThreadNew(MainThread, NULL, &mainThread_attr);
 
   /* Start scheduler */
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
   }
-  /* USER CODE END 3 */
+}
+
+static void MainThread(void *argument)
+{
+  enableSem_id = osSemaphoreNew(1U, 0U, NULL);
+  AUDIOLOGSem_id = osSemaphoreNew(1U, 0U, NULL);
+  WMCSem_id = osSemaphoreNew(1U, 0U, NULL);
+
+  doubleClickTimer_id = osTimerNew(DoubleClickTimerCallback, osTimerOnce, (void *)0, NULL);
+
+  //AUDIOLOG_SDInit();
+ // WMC_Init();
+
+  /* Show everything is ready: default mode is classification */
+  BSP_LED_On(LED_GREEN);
+
+  for (;;) {
+    /* Wait until user buton releases semaphore */
+    osSemaphoreAcquire(enableSem_id, osWaitForever);
+    osDelay(600);
+
+    /* ****Change application mode when double click on user button**** */
+    if(ChangeApplicationMode == 1) {
+      if(WMCEnabled == 1) {
+        AudioLogEnabled = 1;
+	WMCEnabled = 0;
+
+	/* Blue LED shows that audio logging mode is on */
+	BSP_LED_Off(LED_GREEN);
+	BSP_LED_On(LED_BLUE);
+      }
+      else {
+        WMCEnabled = 1;
+	AudioLogEnabled = 0;
+
+	/* Green LED shows that classsification mode is on */
+	BSP_LED_Off(LED_BLUE);
+	BSP_LED_On(LED_GREEN);
+      }
+
+      ChangeApplicationMode = 0;
+    }
+    /* ****Run application**** */
+    else {
+      if(AudioLogEnabled == 1) {
+        AUDIOLOG_Enable();
+	AUDIOLOG_StartRecording();
+
+      	/* TODO: How many times */
+        for(int i=0; i<1000; i++) {
+          osSemaphoreAcquire(AUDIOLOGSem_id, osWaitForever);
+          AUDIOLOG_Save2SD();
+        }
+	AUDIOLOG_Disable();
+	AUDIOLOG_StopRecording();
+      }
+      else {
+        /* Run wood moisture classification algorithm */
+        osDelay(1000);
+	add_samples = 0;
+	index_buff_fill = 0;
+	runs = 0;
+	WMC_Init();
+	BSP_LED_On(LED_BLUE);
+	WMC_StartRecording();
+	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
+
+	for(int i=0; i<32; i++) {
+          osSemaphoreAcquire(WMCSem_id, osWaitForever);
+          WMC_Process(Proc_Buffer_f);
+        }
+	WMC_StopRecording();
+	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
+	ai_float dense_2_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
+	WMC_Run(Spectrogram, dense_2_out);
+
+	BSP_LED_Off(LED_BLUE);
+
+	WMC_ClassificationResult(dense_2_out);
+	BSP_LED_On(LED_GREEN);
+     }
+    }
+  }
+}
+
+static void ArduinoTriggerInit(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PA13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 }
 
 /**
-  * @brief System Clock Configuration
+* @brief  Function that is called when data has been appended to Fill Buffer
+* @param  none
+* @retval None
+*/
+static void WMC_RecordingProcess(void)
+{
+  float32_t sample;
+
+  /* Create a 64ms (1024 samples) window every 32ms (512 samples)
+   Audio Feature Extraction is ran every 32ms on a 64ms window (50% overlap) */
+  if (index_buff_fill >= 1024) {
+    add_samples = index_buff_fill - 1024;
+
+    /* Copy Fill Buffer in Proc Buffer */
+    for (uint32_t i = 0; i < FILL_BUFFER_SIZE; i++) {
+      sample = ((float32_t) Fill_Buffer[i]);
+      /* Invert the scale of the data */
+      sample /= (float32_t) ((1 << (8 * sizeof(int16_t) - 1)));
+      Proc_Buffer_f[i] = sample;
+    }
+
+    runs += 1;
+
+    /* Left shift Fill Buffer by 512 samples */
+    memmove(Fill_Buffer, Fill_Buffer + (FILL_BUFFER_SIZE / 2), sizeof(int16_t) * ((FILL_BUFFER_SIZE / 2) + add_samples));
+    index_buff_fill = (FILL_BUFFER_SIZE / 2 + add_samples);
+
+    osSemaphoreRelease(WMCSem_id);
+  }
+}
+
+/**
+ * @brief Initialize SensorTile.box components
+ * @param None
+ * @retval None
+ */
+static void InitSensorTilebox(void)
+{
+  /* Initialize LEDs */
+  BSP_LED_Init(LED_BLUE);
+  BSP_LED_Init(LED_GREEN);
+  BSP_LED_Init(LED_RED);
+
+  /* Initialize user button */
+  BSP_PB_Init(BUTTON_KEY, BUTTON_MODE_EXTI);
+
+  /* Initalize SD card and microphone */
+  //AUDIOLOG_SDInit();
+  AUDIOLOG_InitMic();
+}
+
+/**
+ * @brief Double click on user button callback function
+ * @param None
+ * @retval None
+ */
+static void DoubleClickTimerCallback (void *argument)
+{
+  DoubleClick = 0;
+}
+
+/**
+ * @brief  EXTI line detection callback.
+ * @param  uint16_t GPIO_Pin Specifies the pin connected EXTI line
+ * @retval None
+ */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if(GPIO_Pin == KEY_BUTTON_PIN) {
+//    if(DoubleClick == 1) {
+//      osTimerDelete(doubleClickTimer_id);
+//      DoubleClick = 0;
+//      ChangeApplicationMode = 1;
+//    }
+//    else {
+//      osTimerStart(doubleClickTimer_id, 500U);
+      osSemaphoreRelease(enableSem_id);
+//      DoubleClick = 1;
+//    }
+  }
+}
+
+/**
+* @brief  Half Transfer user callback, called by BSP functions.
+* @param  uint32_t Instance Not used
+* @retval None
+*/
+void BSP_AUDIO_IN_HalfTransfer_CallBack(uint32_t Instance)
+{
+  if(AudioLogEnabled == 1) {
+    AUDIOLOG_RecordingProcess(IntermediateBuffer, INTERMEDIATE_BUFFER_SIZE);
+  }
+  else {
+    uint32_t buffer_size = PCM_AUDIO_IN_SAMPLES / 2; /* Half transfer */
+    uint32_t nb_samples = buffer_size / sizeof(int16_t); /* Bytes to length */
+
+    /* Copy first half of PCM_Buffer from Microphones onto Fill_Buffer */
+    memcpy(Fill_Buffer + index_buff_fill, PCM_Buffer, buffer_size);
+    index_buff_fill += nb_samples;
+
+    WMC_RecordingProcess();
+  }
+}
+
+/**
+* @brief  Transfer Complete user callback, called by BSP functions.
+* @param  uint32_t Instance Not used
+* @retval None
+*/
+void BSP_AUDIO_IN_TransferComplete_CallBack(uint32_t Instance)
+{
+  if(AudioLogEnabled == 1) {
+    AUDIOLOG_RecordingProcess(IntermediateBuffer, INTERMEDIATE_BUFFER_SIZE);
+  }
+  else {
+    uint32_t buffer_size = PCM_AUDIO_IN_SAMPLES / 2; /* Half transfer */
+    uint32_t nb_samples = buffer_size / sizeof(int16_t); /* Bytes to length */
+
+    /* Copy first half of PCM_Buffer from Microphones onto Fill_Buffer */
+    memcpy(Fill_Buffer + index_buff_fill, PCM_Buffer + nb_samples, buffer_size);
+    index_buff_fill += nb_samples;
+
+    WMC_RecordingProcess();
+  }
+}
+
+/**
+  * @brief  Manages the BSP audio in error event.
+  * @param  Instance Audio in instance.
+  * @retval None.
+  */
+void BSP_AUDIO_IN_Error_CallBack(uint32_t Instance)
+{
+  ErrorHandler(ERROR_AUDIO);
+}
+
+/**
+  * @brief  Start audio recording i.e fill intermediate buffer
+  * @param  None
+  * @retval None
+  */
+void WMC_StartRecording(void)
+{
+  /* Start filling the intermediate buffer */
+  if(BSP_AUDIO_IN_Record(BSP_AUDIO_IN_INSTANCE, (uint8_t *)PCM_Buffer, PCM_AUDIO_IN_SAMPLES*2) != BSP_ERROR_NONE) {
+    ErrorHandler(ERROR_AUDIO);
+  }
+}
+
+/**
+  * @brief  Stop audio recording
+  * @param  None
+  * @retval None
+  */
+void WMC_StopRecording(void)
+{
+  /* Stop filling the intermediate buffer */
+  if(BSP_AUDIO_IN_Stop(BSP_AUDIO_IN_INSTANCE) != BSP_ERROR_NONE) {
+    ErrorHandler(ERROR_AUDIO);
+  }
+}
+
+/**
+* @brief  System Clock tree configuration
+  * @param  None
   * @retval None
   */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-  /** Configure the main internal regulator output voltage
-  */
-  if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
-  {
-    Error_Handler();
+    /**Configure the main internal regulator output voltage
+    */
+  if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1_BOOST) != HAL_OK) {
+    /* Initialization Error */
+    while(1);
   }
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
+
+   /**Configure LSE Drive Capability
+    */
+  HAL_PWR_EnableBkUpAccess();
+
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+
+    /**Initializes the CPU, AHB and APB busses clocks
+    */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|
+                                     RCC_OSCILLATORTYPE_LSE  |
+                                     RCC_OSCILLATORTYPE_HSE  |
+                                     RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
-  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
+  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_11;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 60;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
+  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
+    /* Initialization Error */
+    while(1);
   }
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_MSI;
+
+    /**Initializes the CPU, AHB and APB busses clocks
+    */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK   |
+                                RCC_CLOCKTYPE_SYSCLK |
+                                RCC_CLOCKTYPE_PCLK1  |
+                                RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
-  {
-    Error_Handler();
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK) {
+    /* Initialization Error */
+    while(1);
+  }
+
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_SAI1   |
+                                      RCC_PERIPHCLK_DFSDM1 |
+                                      RCC_PERIPHCLK_USB    |
+                                      RCC_PERIPHCLK_RTC    |
+                                      RCC_PERIPHCLK_SDMMC1 |
+                                      RCC_PERIPHCLK_ADC;
+
+  PeriphClkInit.Sai1ClockSelection = RCC_SAI1CLKSOURCE_PLLSAI1;
+  PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
+  PeriphClkInit.Dfsdm1ClockSelection = RCC_DFSDM1CLKSOURCE_PCLK2;
+  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
+  PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+  PeriphClkInit.Sdmmc1ClockSelection = RCC_SDMMC1CLKSOURCE_PLLP;
+  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_HSE;
+  PeriphClkInit.PLLSAI1.PLLSAI1M = 5;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 96;
+  PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV25;
+  PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV4;
+  PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV4;
+  PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_ADC1CLK|RCC_PLLSAI1_SAI1CLK;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK) {
+    /* Initialization Error */
+    while(1);
   }
 }
 
-/* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
+/** @brief  Blink LED in function of the error code
+  * @param  ErrorType_t ErrorType Error Code
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
+void ErrorHandler(ErrorType_t ErrorType)
 {
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
+  ErrorType_t CountError;
+  while(1) {
+    for(CountError=ERROR_INIT; CountError<ErrorType; CountError++) {
+       BSP_LED_On(LED_RED);
+       HAL_Delay(200);
+       BSP_LED_Off(LED_RED);
+       HAL_Delay(1000);
+    }
+    HAL_Delay(5000);
   }
-  /* USER CODE END 5 */
 }
 
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
-void Error_Handler(void)
-{
-  /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
-  /* USER CODE END Error_Handler_Debug */
-}
+/****END OF FILE****/
 
-#ifdef  USE_FULL_ASSERT
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
-  /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
-}
-#endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

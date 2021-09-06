@@ -87,7 +87,7 @@ typedef AI_ALIGNED_TYPE(struct,4)ai_layer_svdf_{
     ai_size rank;
     ai_tflitefused_activation activation;
 
-}ai_layer_svdf;
+} ai_layer_svdf;
 
 
 /*!
@@ -181,7 +181,7 @@ typedef AI_ALIGNED_TYPE(struct, 4) ai_layer_resize_{
   ai_float              cubic_coeff_a;      /*!< the coefficient 'a' used in cubic interpolation */
   ai_bool               exclude_outside;    /*!< exclude outside pixels flag */
   ai_float              extrapol_val;       /*!< used in tf_crop_and_resize cas */
-  ai_upsample_mode      mode;               /*!< resize mode */
+  ai_resize_mode        mode;               /*!< resize mode */
   ai_nearest_mode       nearest_mode;       /*!< used in nearest mode */
   AI_CONST ai_array*    scales;             /*!< scale array along each dimension */
   AI_CONST ai_array*    roi;                /*!< roi array, used in tf_crop_and_resize case */
@@ -246,11 +246,23 @@ typedef AI_ALIGNED_TYPE(struct, 4) ai_layer_add_ {
   ai_layer_base*     next_layer;  /*!< pointer to next layer to process */
 } ai_layer_add;
 
-typedef AI_ALIGNED_TYPE(struct, 4) ai_layer_ArgMax_{
+typedef AI_ALIGNED_TYPE(struct, 4) ai_layer_argmax_ {
   AI_LAYER_COMMON_FIELDS_DECLARE
   ai_i16   axis;
   ai_i16   keepdims;
-} ai_layer_ArgMax;
+  ai_i16   select_last_index;
+} ai_layer_argmax;
+
+typedef AI_ALIGNED_TYPE(struct, 4) ai_layer_argmin_ {
+  AI_LAYER_COMMON_FIELDS_DECLARE
+  ai_i16   axis;
+  ai_i16   keepdims;
+  ai_i16   select_last_index;
+} ai_layer_argmin;
+
+// TODO: REMOVE This legacy
+typedef ai_layer_argmax ai_layer_ArgMax;
+typedef ai_layer_argmin ai_layer_ArgMin;
 
 
 /*!
@@ -273,9 +285,7 @@ typedef AI_ALIGNED_TYPE(struct, 4) ai_layer_transpose_ {
  * transpose layer. It is intended to be used by his associated forward function
  * @ref forward_transpose_batch
  */
-typedef AI_ALIGNED_TYPE(struct, 4) ai_layer_transpose_batch_ {
-  AI_LAYER_COMMON_FIELDS_DECLARE
-} ai_layer_transpose_batch;
+typedef ai_layer_base ai_layer_transpose_batch;
 
 
 #define AI_TIME_DISTRIBUTED_AXIS    (AI_SHAPE_HEIGHT)
@@ -335,7 +345,7 @@ typedef void (*func_binary)(ai_handle out,const ai_handle a, const ai_handle b);
 typedef void (*func_buffer_binary)(ai_handle out,const ai_handle a, const ai_handle b, const ai_size loop);
 typedef void (*func_buffer_binary_integer)(ai_handle out,const ai_handle a, const ai_handle b, const ai_size loop,
                                         const ai_handle scale1, const ai_handle zp1, const ai_handle scale2, const ai_handle zp2, 
-                                        const ai_handle scaleout, const ai_handle zpout);
+                                        const ai_handle scaleout, const ai_handle zpout, const ai_i32 scalar_op);
 
 /*!
  * @struct ai_layer_eltwise
@@ -408,6 +418,27 @@ void forward_split(ai_layer* layer);
 AI_INTERNAL_API
 void forward_add(ai_layer* layer);
 
+/*!
+ * @brief Compute the indices of the max elements of the input tensor's element along the provided axis.
+ * @ingroup layers_generic
+ * @param layer argmax layer
+ */
+AI_INTERNAL_API
+void forward_argmax(ai_layer* layer);
+
+/*!
+ * @brief Compute the indices of the min elements of the input tensor's element along the provided axis.
+ * @ingroup layers_generic
+ * @param layer argmin layer
+ */
+AI_INTERNAL_API
+void forward_argmin(ai_layer* layer);
+
+/*!
+ * @brief Svdf layer.
+ * @ingroup layers_generic
+ * @param layer svdf layer
+ */
 AI_INTERNAL_API
 void forward_svdf(ai_layer* layer);
 

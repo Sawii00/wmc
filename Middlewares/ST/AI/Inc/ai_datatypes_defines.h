@@ -118,9 +118,6 @@
           AI_STRINGIFY_ARG(minor) "." \
           AI_STRINGIFY_ARG(micro) \
 
-#define AI_PACK(...) \
-  __VA_ARGS__
-
 
 #define AI_PACK_TENSORS_PTR(...) \
   AI_PACK(__VA_ARGS__)
@@ -138,7 +135,6 @@
 #define AI_DEBUG(...)                AI_WRAP_FUNC(AI_NOP)
 #endif
 
-#define AI_FLAG_NONE                  (0x0)
 #define AI_FLAG_SET(mask, flag)       (mask) |= (flag)
 #define AI_FLAG_UNSET(mask, flag)     (mask) &= (~(flag))
 #define AI_FLAG_IS_SET(mask, flag)    ((flag)==((mask)&(flag)))

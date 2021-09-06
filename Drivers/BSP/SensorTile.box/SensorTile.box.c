@@ -508,21 +508,4 @@ void     BSP_PowerButton_DeInit(void)
   HAL_GPIO_DeInit(POWER_BUTTON_GPIO_PORT, GPIO_InitStruct.Pin);
 }
 
-
-/**
-* @}
-*/
-
-/**
-* @}
-*/ 
-
-/**
-* @}
-*/
-
-/**
-* @}
-*/    
-
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

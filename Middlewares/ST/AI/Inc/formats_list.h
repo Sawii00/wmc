@@ -38,13 +38,13 @@ FMT_ENTRY(0, FLOAT16, AI_FMT_FLOAT, 1, 1, 0, 16,  0, 0)
 /* Integer formats (i.e. fractional bits = 0!) */
 FMT_ENTRY(1, U8,  AI_FMT_Q, 0, 0, 0, 8,  0, 0)
 FMT_ENTRY(1, U16, AI_FMT_Q, 0, 0, 0, 16, 0, 0)
-FMT_ENTRY(0, U32, AI_FMT_Q, 0, 0, 0, 32, 0, 0)
+FMT_ENTRY(1, U32, AI_FMT_Q, 0, 0, 0, 32, 0, 0)
 FMT_ENTRY(0, U64, AI_FMT_Q, 0, 0, 0, 64, 0, 0)
 FMT_ENTRY(0, U4,  AI_FMT_Q, 0, 0, 0, 4,  0, 0)
 
 FMT_ENTRY(1, S8,  AI_FMT_Q, 1, 0, 0, 8,  0, 0)
 FMT_ENTRY(1, S16, AI_FMT_Q, 1, 0, 0, 16, 0, 0)
-FMT_ENTRY(0, S32, AI_FMT_Q, 1, 0, 0, 32, 0, 0)
+FMT_ENTRY(1, S32, AI_FMT_Q, 1, 0, 0, 32, 0, 0)
 FMT_ENTRY(0, S64, AI_FMT_Q, 1, 0, 0, 64, 0, 0)
 FMT_ENTRY(0, S4,  AI_FMT_Q, 1, 0, 0, 4,  0, 0)
 

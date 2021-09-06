@@ -32,7 +32,7 @@
 /*!
  * @brief platform runtime core library version
  */
-#define AI_PLATFORM_RUNTIME_MAJOR    6
+#define AI_PLATFORM_RUNTIME_MAJOR    7
 #define AI_PLATFORM_RUNTIME_MINOR    0
 #define AI_PLATFORM_RUNTIME_MICRO    0
 

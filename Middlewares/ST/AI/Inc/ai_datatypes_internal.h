@@ -238,6 +238,27 @@ ai_bool ai_shape_is_same(
   return true;
 }
 
+
+/*!
+ * @brief Check whether the shapes is 1*1*1... for a scalar value content.
+ * @ingroup datatypes_internal
+ * @param shape the tensor shape to evaluate
+ * @return true if shape0 is scalar false otherwise
+ */
+AI_DECLARE_STATIC
+ai_bool ai_shape_is_scalar(
+  const ai_shape* shape0)
+{
+  ai_size dim = AI_SHAPE_SIZE(shape0);
+  while ( dim>0 ) {
+    dim--;
+    if (AI_SHAPE_ELEM(shape0, dim) != 1)
+      return false;
+  }
+  return true;
+}
+
+
 /*!
  * @brief Check if shape0 is a subshape of shape1
  * @ingroup datatypes_internal
@@ -270,10 +291,9 @@ AI_DECLARE_STATIC
 ai_size ai_shape_get_size(const ai_shape* shape)
 {
   AI_ASSERT(shape)
-  AI_ASSERT(AI_SHAPE_SIZE(shape)==AI_SHAPE_MAX_DIMENSION)
   ai_size dim = AI_SHAPE_SIZE(shape);
   ai_size size = 1;
-  while ( dim>0 ) {
+  while (dim>0) {
     dim--;
     size *= AI_SHAPE_ELEM(shape, dim);
   }

@@ -24,6 +24,8 @@
 
 #include "layers_common.h"
 #include "layers_conv2d.h"
+#include "layers_custom.h"
+#include "layers_formats_converters.h"
 #include "layers_generic.h"
 #include "layers_nl.h"
 #include "layers_norm.h"
@@ -31,12 +33,17 @@
 #include "layers_rnn.h"
 #include "layers_dense.h"
 #include "layers_sm.h"
+#include "layers_ml_iforest.h"
+#include "layers_ml_svmregressor.h"
+#include "layers_ml_svc.h"
+#include "layers_ml.h"
+
+// #include "layers_template.h"
 
 #ifdef USE_OPERATORS
   #include "layers_lambda.h"
 #endif /* USE_OPERATORS */
 
-#include "layers_custom.h"
 
 AI_API_DECLARE_BEGIN
 

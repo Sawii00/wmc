@@ -98,13 +98,6 @@
 #define AI_NODE_FUNC(func_) \
   ((node_func)(func_))
 
-#define AI_NODE_IS_FIRST(node) \
-  (AI_NODE_OBJ(node)==AI_NODE_OBJ(AI_NODE_OBJ(node)->network->input_node))
-
-#define AI_NODE_IS_LAST(node_) \
-  ((AI_NODE_OBJ(node_)==AI_NODE_OBJ(node_)->next) || \
-   (AI_NODE_OBJ(node_)->next==NULL))
-
 #define AI_NODE_COMMON_FIELDS_DECLARE \
   ai_node_type type;              /*!< node type id (see @ref ai_node_type) */ \
   ai_id_obj id;                   /*!< node object instance id (see @ref ai_id_obj) */ \
@@ -131,12 +124,9 @@
   .next = AI_NODE_OBJ(next_), \
   .forward = AI_NODE_FUNC(forward_)
 
-#define AI_FOR_EACH_NODE_DO(node_, nodes_) \
-  for (ai_node* node_ = AI_NODE_OBJ(nodes_); (node_); \
-       node_ = ((AI_NODE_IS_LAST(node_)) ? NULL : (node_)->next))
-
-
-/**  TENSOR CHAINS LOOP MACROS & GETTERS  *************************************/
+/*****************************************************************************/
+/** Network Tensors Chains / Lists Handlers                                 **/
+/*****************************************************************************/
 #define AI_FOR_EACH_TENSOR_CHAIN_DO(tlist_ptr_, chain_) \
   ai_tensor_list* tlist_ptr_ = (chain_)->chain; \
   for (; tlist_ptr_<(((chain_)->chain)+((chain_)->size)); tlist_ptr_++)
@@ -147,6 +137,7 @@
   for (ai_size idx_ = 0; \
        idx_ < GET_TENSOR_LIST_SIZE(tlist_ptr_) && \
          (t_ptr_ = GET_TENSOR_LIST_ITEM(tlist_ptr_, idx_)) != 0; ++idx_)
+
 
 #define GET_TENSOR_LIST_INFO(list_) \
   ((list_)->info)
@@ -195,24 +186,11 @@
 #define GET_TENSOR_OUT(chain_, pos_) \
   (GET_TENSOR_LIST_ITEM(GET_TENSOR_LIST_OUT(chain_), (pos_)))
 
-#define SET_TENSOR_IN(chain_, pos_) \
-  (GET_TENSOR_LIST_IN(chain_)->tensor[(pos_)])
-
-#define SET_TENSOR_OUT(chain_, pos_) \
-  (GET_TENSOR_LIST_OUT(chain_)->tensor[(pos_)])
-
 #define GET_TENSOR_WEIGHTS(chain_, pos_) \
   (GET_TENSOR_LIST_ITEM(GET_TENSOR_LIST_WEIGTHS(chain_), (pos_)))
 
 #define GET_TENSOR_SCRATCH(chain_, pos_) \
   (GET_TENSOR_LIST_ITEM(GET_TENSOR_LIST_SCRATCH(chain_), (pos_)))
-
-#define AI_NODE_IO_GET(node_, in_, out_) \
-  ASSERT_NODE_SANITY(node_) \
-  ai_tensor* in_  = GET_TENSOR_IN((node_)->tensors, 0); \
-  ai_tensor* out_ = GET_TENSOR_OUT((node_)->tensors, 0); \
-  ASSERT_TENSOR_SANITY(in_) \
-  ASSERT_TENSOR_SANITY(out_)
 
 /******************************************************************************/
 
