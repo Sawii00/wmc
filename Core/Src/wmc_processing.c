@@ -101,10 +101,6 @@ WMC_Status_t WMC_Process(float32_t *pBuffer)
  */
 WMC_Status_t WMC_Run(float32_t *pSpectrogram, float32_t *pNetworkOut)
 {
-  ai_i8 WMCInput[AI_WMC_IN_1_SIZE];
-  ai_i8 WMCOutput[AI_WMC_OUT_1_SIZE];
-  StandardizeFeatures(pSpectrogram);
-
   ai_run(pSpectrogram, pNetworkOut);
 
   return WMC_OK;

@@ -271,12 +271,9 @@ void BSP_AUDIO_IN_HalfTransfer_CallBack(uint32_t Instance)
     AUDIOLOG_RecordingProcess(IntermediateBuffer, INTERMEDIATE_BUFFER_SIZE);
   }
   else {
-    uint32_t buffer_size = PCM_AUDIO_IN_SAMPLES / 2; /* Half transfer */
-    uint32_t nb_samples = buffer_size / sizeof(int16_t); /* Bytes to length */
-
-    /* Copy first half of PCM_Buffer from Microphones onto Fill_Buffer */
-    memcpy(Fill_Buffer + index_buff_fill, PCM_Buffer, buffer_size);
-    index_buff_fill += nb_samples;
+    /* Copy PCM_Buffer from Microphones onto Fill_Buffer */
+    memcpy(Fill_Buffer + index_buff_fill, PCM_Buffer, sizeof(int16_t) * PCM_AUDIO_IN_SAMPLES);
+    index_buff_fill += PCM_AUDIO_IN_SAMPLES;
 
     WMC_RecordingProcess();
   }
@@ -293,12 +290,9 @@ void BSP_AUDIO_IN_TransferComplete_CallBack(uint32_t Instance)
     AUDIOLOG_RecordingProcess(IntermediateBuffer, INTERMEDIATE_BUFFER_SIZE);
   }
   else {
-    uint32_t buffer_size = PCM_AUDIO_IN_SAMPLES / 2; /* Half transfer */
-    uint32_t nb_samples = buffer_size / sizeof(int16_t); /* Bytes to length */
-
-    /* Copy first half of PCM_Buffer from Microphones onto Fill_Buffer */
-    memcpy(Fill_Buffer + index_buff_fill, PCM_Buffer + nb_samples, buffer_size);
-    index_buff_fill += nb_samples;
+    /* Copy PCM_Buffer from Microphones onto Fill_Buffer */
+    memcpy(Fill_Buffer + index_buff_fill, PCM_Buffer, sizeof(int16_t) * PCM_AUDIO_IN_SAMPLES);
+    index_buff_fill += PCM_AUDIO_IN_SAMPLES;
 
     WMC_RecordingProcess();
   }
