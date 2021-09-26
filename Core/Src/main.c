@@ -10,8 +10,8 @@ osSemaphoreId_t WMCSem_id;
 
 /* Private variables ---------------------------------------------------------*/
 uint8_t ChangeApplicationMode = 0;
-uint8_t AudioLogEnabled = 0;
-uint8_t WMCEnabled = 1;
+uint8_t AudioLogEnabled = 1;
+uint8_t WMCEnabled = 0;
 
 /* Semaphore to enable wmc or audio logging */
 osSemaphoreId_t enableSem_id;
@@ -99,7 +99,7 @@ static void MainThread(void *argument)
 
   doubleClickTimer_id = osTimerNew(DoubleClickTimerCallback, osTimerOnce, (void *)0, NULL);
 
-  /* Show everything is ready: default mode is classification */
+  /* Show everything is ready: default is audio logging */
   BSP_LED_On(LED_GREEN);
 
   for (;;) {
@@ -107,45 +107,52 @@ static void MainThread(void *argument)
     osSemaphoreAcquire(enableSem_id, osWaitForever);
     osDelay(600);
 
-    /* ****Change application mode when double click on user button**** */
+    /****Change application mode when double click on user button****/
     if(ChangeApplicationMode == 1) {
       if(WMCEnabled == 1) {
         AudioLogEnabled = 1;
 	WMCEnabled = 0;
 
-	/* Blue LED shows that audio logging mode is on */
-	BSP_LED_Off(LED_GREEN);
-	BSP_LED_On(LED_BLUE);
+	/* Green LED shows that audio logging mode is on */
+	BSP_LED_Off(LED_BLUE);
+	BSP_LED_On(LED_GREEN);
       }
       else {
         WMCEnabled = 1;
 	AudioLogEnabled = 0;
 
-	/* Green LED shows that classsification mode is on */
-	BSP_LED_Off(LED_BLUE);
-	BSP_LED_On(LED_GREEN);
+	/* BLUE LED shows that classification mode is on */
+	BSP_LED_Off(LED_GREEN);
+	BSP_LED_On(LED_BLUE);
       }
 
       ChangeApplicationMode = 0;
     }
-    /* ****Run application**** */
+    /****Run application****/
     else {
       if(AudioLogEnabled == 1) {
-        AUDIOLOG_Enable();
+        /* Blue LED on while recording */
+        BSP_LED_On(LED_BLUE);
+
+	AUDIOLOG_Enable();
 	StartRecording();
 
       	/* TODO: How many times */
+	/* Saving to SD card happens every 64*48/2=1036 samples
+	 * with 48kHz sampling thus every 32ms */
         for(int i=0; i<1000; i++) {
           osSemaphoreAcquire(AUDIOLOGSem_id, osWaitForever);
           AUDIOLOG_Save2SD();
         }
 	AUDIOLOG_Disable();
 	StopRecording();
+
+	BSP_LED_Off(LED_BLUE);
       }
       else {
         /* Run wood moisture classification algorithm */
         osDelay(1000);
-	BSP_LED_On(LED_BLUE);
+	BSP_LED_On(LED_GREEN);
 	StartRecording();
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
 
@@ -158,6 +165,7 @@ static void MainThread(void *argument)
 	ai_float cnn_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
 	WMC_Run(cnn_out);
 
+	BSP_LED_Off(LED_GREEN);
 	BSP_LED_Off(LED_BLUE);
 
 	WMC_ClassificationResult(cnn_out);

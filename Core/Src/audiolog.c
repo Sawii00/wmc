@@ -67,7 +67,7 @@ void AUDIOLOG_Enable(void)
   /* Create filename */
   static uint16_t file_counter = 0;
   char file_name[30];
-  sprintf(file_name, "audiolog%03d.wav", file_counter);
+  sprintf(file_name, "Mic%03d.wav", file_counter);
   file_counter++;
 
   /* Open audio file */
