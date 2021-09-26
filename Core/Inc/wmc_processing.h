@@ -8,30 +8,20 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "wmc.h"
+#include "wmc_featurescaler.h"
 #include "audiolog.h"
 #include "feature_extraction.h"
-
-/* Exported defines ----------------------------------------------------------*/
-#define FFT_SIZE         1024
-#define MEL_SIZE         30
-
-#define SPECTROGRAM_ROWS MEL_SIZE
-#define SPECTROGRAM_COLS 32
-
-/* Exported types ------------------------------------------------------------*/
-typedef enum
-{
-  WMC_OK      = 0x00,
-  WMC_ERROR   = 0x01,
-} WMC_Status_t;
+#include "ai.h"
+#include "ai_platform.h"
 
 /* Exported functions  -------------------------------------------------------*/
-WMC_Status_t WMC_Init(void);
-WMC_Status_t WMC_DeInit(void);
+void WMC_Init(void);
+void WMC_DeInit(void);
 
-WMC_Status_t WMC_Process(float32_t *pBuffer);
-WMC_Status_t WMC_Run(float32_t *pSpectrogram, float32_t *pNetworkOut);
-WMC_Status_t WMC_ClassificationResult(float32_t *pNNOut);
+void WMC_RecordingProcess(uint16_t *pPCMBuffer);
+void WMC_Process(void);
+void WMC_Run(float32_t *pCNNOut);
+void WMC_ClassificationResult(float32_t *pCNNOut);
 
 #ifdef __cplusplus
 }

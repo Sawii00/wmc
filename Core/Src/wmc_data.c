@@ -477,3 +477,6 @@ ai_bool ai_wmc_data_params_get(ai_handle network, ai_network_params* params)
 
 
 AI_API_DECLARE_END
+
+/****END OF FILE****/
+

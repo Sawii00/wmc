@@ -1,29 +1,9 @@
-/**
-  ******************************************************************************
-  * @file    SDDataLogRToS\Inc\ffconf.h
-  * @author  SRA - Central Labs
-  * @version V1.2.0
-  * @date    09-Apr-2020
-  * @brief   Generic FAT file system module  R0.12c (C)ChaN
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0055, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0055
-  *
-  ******************************************************************************
-  */
-
+/* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef _FFCONF
 #define _FFCONF 68300	/* Revision ID */
 
 /*-----------------------------------------------------------------------------/
-/ Additional user header to be used  
+/ Additional user header to be used
 /-----------------------------------------------------------------------------*/
 #include "stm32l4xx_hal.h"
 

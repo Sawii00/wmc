@@ -1,21 +1,25 @@
 /* Includes ------------------------------------------------------------------*/
 #include "audiolog.h"
 
-/* Exported variables --------------------------------------------------------*/
+/* Imported variables --------------------------------------------------------*/
+/* Buffer to store microphone samples, defined in main.c */
+extern uint16_t PCMBuffer[];
+
 extern osSemaphoreId_t AUDIOLOGSem_id;
 
-/* Private defines -----------------------------------------------------------*/
-
 /* Private variables ---------------------------------------------------------*/
+#define AUDIOLOG_BUFFER_SIZE (PCM_BUFFER_SIZE * 64)
+
+/* Private defines   ---------------------------------------------------------*/
+/* SD card */
 static FATFS SDFatFs;  /* File system object for SD card logical drive */
 static FIL AudioFile;  /* File object for audio file */
 static char SDPath[4]; /* SD card logical drive path */
 
-BSP_AUDIO_Init_t MicParams;
-
-uint16_t IntermediateBuffer[INTERMEDIATE_BUFFER_SIZE];
-uint16_t AudioBuffer[AUDIO_BUFFER_SIZE];
-static volatile uint32_t ReadIndexForBuffer;
+/* Process buffer for audio logging */
+static uint16_t AUDIOLOGBuffer[AUDIOLOG_BUFFER_SIZE];
+static uint32_t AUDIOLOGBufferWriteIndex = 0;
+static volatile uint32_t AUDIOLOGBufferReadIndex = 0;
 
 static uint8_t pAudioHeader[44];
 
@@ -31,12 +35,10 @@ void WAV_HeaderUpdate(uint32_t len);
 void AUDIOLOG_SDInit(void)
 {
   if(FATFS_LinkDriver(&SD_Driver, SDPath) == 0) {
-    ErrorHandler(ERROR_FATFS);
-  }
-
-  /* Register the file system object to the FatFs module */
-  if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) != FR_OK) {
-    ErrorHandler(ERROR_FATFS);
+    /* Register the file system object to the FatFs module */
+    if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) != FR_OK) {
+      ErrorHandler(ERROR_FATFS);
+    }
   }
   /* Explicit initialization to trap if SD-Card missing */
   if (SD_Driver.disk_initialize(0) != RES_OK) {
@@ -53,61 +55,6 @@ void AUDIOLOG_SDDeInit(void)
 {
   FATFS_UnLinkDriver(SDPath);
   HAL_SD_DeInit(&hsd1);
-}
-
-/** @brief Initialize microphone
- * @param  None
- * @retval None
- */
-void AUDIOLOG_InitMic(void)
-{
-
-  MicParams.BitsPerSample = 16;
-  MicParams.ChannelsNbr = 1;
-  MicParams.Device = AMIC_ONBOARD;
-  MicParams.SampleRate = AUDIO_SAMPLING_FREQUENCY;
-  MicParams.Volume = 32;
-
-  if(BSP_AUDIO_IN_Init(BSP_AUDIO_IN_INSTANCE, &MicParams) != BSP_ERROR_NONE) {
-    ErrorHandler(ERROR_AUDIO);
-  }
-}
-
-/** @brief DeInitialize microphone
- * @param  None
- * @retval None
- */
-void AUDIOLOG_DeInitMic(void)
-{
-  if(BSP_AUDIO_IN_DeInit(BSP_AUDIO_IN_INSTANCE) != BSP_ERROR_NONE) {
-    ErrorHandler(ERROR_AUDIO);
-  }
-}
-
-/**
-  * @brief  Start audio recording i.e fill intermediate buffer
-  * @param  None
-  * @retval None
-  */
-void AUDIOLOG_StartRecording(void)
-{
-  /* Start filling the intermediate buffer */
-  if(BSP_AUDIO_IN_Record(BSP_AUDIO_IN_INSTANCE, (uint8_t *)IntermediateBuffer, INTERMEDIATE_BUFFER_SIZE*2) != BSP_ERROR_NONE) {
-    ErrorHandler(ERROR_AUDIO);
-  }
-}
-
-/**
-  * @brief  Stop audio recordin 
-  * @param  None
-  * @retval None
-  */
-void AUDIOLOG_StopRecording(void)
-{
-  /* Stop filling the intermediate buffer */
-  if(BSP_AUDIO_IN_Stop(BSP_AUDIO_IN_INSTANCE) != BSP_ERROR_NONE) {
-    ErrorHandler(ERROR_AUDIO);
-  }
 }
 
 /**
@@ -156,8 +103,8 @@ void AUDIOLOG_Disable(void)
   /* Update the data length in the header of the recorded WAV */
   f_lseek(&AudioFile, 0);
 
-  uint32_t BytesWritten; /* written byte count */
-  if(f_write(&AudioFile, (uint8_t*)pAudioHeader, sizeof(pAudioHeader), (void*)&BytesWritten) != FR_OK) {
+  uint32_t bytes_written; /* Written byte count */
+  if(f_write(&AudioFile, (uint8_t*)pAudioHeader, sizeof(pAudioHeader), (void*)&bytes_written) != FR_OK) {
     ErrorHandler(ERROR_FATFS);
   }
 
@@ -168,31 +115,30 @@ void AUDIOLOG_Disable(void)
 }
 /**
   * @brief  Management of the audio data logging
-  * @param  pPCMBuffer  points to the PCM buffer
-  * @param  len         number of samples to process
+  * @param  pPCMBuffer  Pointer to PCM buffer, data from microphone
   * @retval None
   */
-void AUDIOLOG_RecordingProcess(uint16_t *pIntermediateBuffer, uint32_t len)
+void AUDIOLOG_RecordingProcess(uint16_t *pPCMBuffer)
 {
-  static uint32_t WriteIndexForBuffer = 0;
-
-  /* Accumulate audio buffer into local ping-pong buffer before writing to SD card */
-  memcpy(AudioBuffer + WriteIndexForBuffer, pIntermediateBuffer, len * sizeof(uint16_t));
-  WriteIndexForBuffer += len;
+  /* Accumulate audiolog buffer into local ping-pong buffer before writing to SD card */
+  memcpy(AUDIOLOGBuffer + AUDIOLOGBufferWriteIndex, pPCMBuffer, sizeof(uint16_t) * PCM_BUFFER_SIZE);
+  AUDIOLOGBufferWriteIndex += PCM_BUFFER_SIZE;
 
   /* Save first half to SD WAV file */
-  if(WriteIndexForBuffer == (AUDIO_BUFFER_SIZE/2)) {
-    ReadIndexForBuffer = 0;
+  if(AUDIOLOGBufferWriteIndex == (AUDIOLOG_BUFFER_SIZE/2)) {
+    AUDIOLOGBufferReadIndex = 0;
     osSemaphoreRelease(AUDIOLOGSem_id);
   }
   /* Save second half to SD WAV file */
-  else if (WriteIndexForBuffer == AUDIO_BUFFER_SIZE) {
-    ReadIndexForBuffer = AUDIO_BUFFER_SIZE/2;
-    osSemaphoreRelease(AUDIOLOGSem_id);
-    }
-    WriteIndexForBuffer = 0;
-}
+  else if (AUDIOLOGBufferWriteIndex == AUDIOLOG_BUFFER_SIZE) {
+    AUDIOLOGBufferReadIndex = AUDIOLOG_BUFFER_SIZE/2;
 
+    /* Set index back to 0 to write again from begging of the audiolog buffer */
+    AUDIOLOGBufferWriteIndex = 0;
+
+    osSemaphoreRelease(AUDIOLOGSem_id);
+  }
+}
 
 /**
   * @brief  Save processed audio buffer to SD WAV file
@@ -201,9 +147,9 @@ void AUDIOLOG_RecordingProcess(uint16_t *pIntermediateBuffer, uint32_t len)
   */
 void AUDIOLOG_Save2SD(void)
 {
-  uint32_t BytesWritten; /* written byte count */
-  if( f_write(&AudioFile, ((uint8_t *)(AudioBuffer+ReadIndexForBuffer)),
-              AUDIO_BUFFER_SIZE, (void *)&BytesWritten) != FR_OK) {
+  uint32_t bytes_written; /* Written byte count */
+  if( f_write(&AudioFile, ((uint8_t *)(AUDIOLOGBuffer+AUDIOLOGBufferReadIndex)),
+              AUDIOLOG_BUFFER_SIZE, (void *)&bytes_written) != FR_OK) {
     ErrorHandler(ERROR_FATFS);
   }
 }

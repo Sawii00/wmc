@@ -2,17 +2,12 @@
 #include "main.h"
 #include "stm32l4xx_it.h"
 #include "stm32l4xx_hal.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os.h"
 #include "sd_diskio_SensorTile.box.h"
-/* Private includes ----------------------------------------------------------*/
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
+
 /* Private function prototypes -----------------------------------------------*/
 void EXTI0_IRQHandler(void);
-/* Private user code ---------------------------------------------------------*/
+
 /* External variables --------------------------------------------------------*/
 extern SD_HandleTypeDef hsd1;
 

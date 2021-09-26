@@ -1,7 +1,7 @@
+/* Includes ------------------------------------------------------------------*/
 #include "wmc_featurescaler.h"
 
-/* Feature Scaling vectors 30x32 flattened to be used for Model 93 */
-
+/* Feature Scaling vectors 30x32 flattened */
 const float featureScalerMean[960] = {
 -4.1368220059e+01,-4.1340247034e+01,-4.1348919184e+01,-4.1362971353e+01,
 -4.1359404768e+01,-4.1362384893e+01,-4.1364486198e+01,-4.1291038891e+01,
@@ -488,4 +488,4 @@ const float featureScalerStd[960] = {
 5.9263594663e+00,5.8665376529e+00,5.8544599910e+00,5.8268020300e+00
 };
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+/****END OF FILE****/

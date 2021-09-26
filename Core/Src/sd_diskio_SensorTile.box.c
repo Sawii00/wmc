@@ -1,52 +1,13 @@
-/**
-  ******************************************************************************
-  * @file    sd_diskio_SensorTile.box.c
-  * @author  Central LAB
-  * @version V4.0.0
-  * @date    30-Oct-2019
-  * @brief   SD Disk I/O driver for SensorTile.box
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT(c) 2018 STMicroelectronics</center></h2>
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
-
 /* Includes ------------------------------------------------------------------*/
 #include "ff_gen_drv.h"
 #include "sd_diskio_SensorTile.box.h"
 
-/* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-
  /*
- * the following Timeout is useful to give the control back to the applications
- * in case of errors in either BSP_SD_ReadCpltCallback() or BSP_SD_WriteCpltCallback()
- * the value by default is as defined in the BSP platform driver otherwise 30 secs
- */
+  * the following Timeout is useful to give the control back to the applications
+  * in case of errors in either BSP_SD_ReadCpltCallback() or BSP_SD_WriteCpltCallback()
+  * the value by default is as defined in the BSP platform driver otherwise 30 secs
+  */
 #define SD_TIMEOUT 30 * 1000
 
 #define SD_DEFAULT_BLOCK_SIZE 512
@@ -56,6 +17,7 @@
 static volatile DSTATUS Stat = STA_NOINIT;
 
 static volatile  UINT  WriteStatus = 0, ReadStatus = 0;
+
 /* Private function prototypes -----------------------------------------------*/
 static DSTATUS SD_CheckStatus(BYTE lun);
 DSTATUS SD_initialize (BYTE);
@@ -82,17 +44,12 @@ const Diskio_drvTypeDef  SD_Driver =
 #endif /* _USE_IOCTL == 1 */
 };
 
-/* USER CODE BEGIN beforeFunctionSection */
-/* can be used to modify / undefine following code or add new code */
-/* USER CODE END beforeFunctionSection */
-
 /* Private functions ---------------------------------------------------------*/
 static DSTATUS SD_CheckStatus(BYTE lun)
 {
   Stat = STA_NOINIT;
 
-  if(BSP_SD_GetCardState() == MSD_OK)
-  {
+  if(BSP_SD_GetCardState() == MSD_OK) {
     Stat &= ~STA_NOINIT;
   }
 
@@ -109,8 +66,7 @@ DSTATUS SD_initialize(BYTE lun)
   Stat = STA_NOINIT;
 #if !defined(DISABLE_SD_INIT)
 
-  if(BSP_SD_Init() == MSD_OK)
-  {
+  if(BSP_SD_Init() == MSD_OK) {
     Stat = SD_CheckStatus(lun);
   }
 
@@ -149,27 +105,21 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 
   if(BSP_SD_ReadBlocks_DMA((uint32_t*)buff,
                            (uint32_t) (sector),
-                           count) == MSD_OK)
-  {
+                           count) == MSD_OK) {
     /* Wait that the reading process is completed or a timeout occurs */
     timeout = HAL_GetTick();
-    while((ReadStatus == 0) && ((HAL_GetTick() - timeout) < SD_TIMEOUT))
-    {
+    while((ReadStatus == 0) && ((HAL_GetTick() - timeout) < SD_TIMEOUT)) {
+      ;
     }
     /* incase of a timeout return error */
-    if (ReadStatus == 0)
-    {
+    if (ReadStatus == 0) {
       res = RES_ERROR;
-    }
-    else
-    {
+    } else {
       ReadStatus = 0;
       timeout = HAL_GetTick();
 
-      while((HAL_GetTick() - timeout) < SD_TIMEOUT)
-      {
-        if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
-        {
+      while((HAL_GetTick() - timeout) < SD_TIMEOUT) {
+        if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
           res = RES_OK;
 #if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
             /*
@@ -214,28 +164,22 @@ DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
 
   if(BSP_SD_WriteBlocks_DMA((uint32_t*)buff,
                             (uint32_t) (sector),
-                            count) == MSD_OK)
-  {
+                            count) == MSD_OK) {
     /* Wait that writing process is completed or a timeout occurs */
 
     timeout = HAL_GetTick();
-    while((WriteStatus == 0) && ((HAL_GetTick() - timeout) < SD_TIMEOUT))
-    {
+    while((WriteStatus == 0) && ((HAL_GetTick() - timeout) < SD_TIMEOUT)) {
+      ;
     }
     /* incase of a timeout return error */
-    if (WriteStatus == 0)
-    {
+    if (WriteStatus == 0) {
       res = RES_ERROR;
-    }
-    else
-    {
+    } else {
       WriteStatus = 0;
       timeout = HAL_GetTick();
 
-      while((HAL_GetTick() - timeout) < SD_TIMEOUT)
-      {
-        if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
-        {
+      while((HAL_GetTick() - timeout) < SD_TIMEOUT) {
+        if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
           res = RES_OK;
           break;
         }
@@ -262,8 +206,7 @@ DRESULT SD_ioctl(BYTE lun, BYTE cmd, void *buff)
 
   if (Stat & STA_NOINIT) return RES_NOTRDY;
 
-  switch (cmd)
-  {
+  switch (cmd) {
   /* Make sure that no pending write process */
   case CTRL_SYNC :
     res = RES_OK;
@@ -318,5 +261,5 @@ void BSP_SD_ReadCpltCallback(void)
   ReadStatus = 1;
 }
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+/****END OF FILE****/
 

@@ -7,8 +7,11 @@
 #include "stm32l4xx_hal_conf.h"
 #include "stm32l4xx_hal_def.h"
 #include "cmsis_os.h"
+#include "arm_math.h"
 #include "SensorTile.box.h"
 #include "audiolog.h"
+#include "wmc_processing.h"
+#include "wmc_processing.h"
 
 /* Exported types ------------------------------------------------------------*/
 /**
@@ -24,9 +27,16 @@ typedef enum
   ERROR_AI,
 } ErrorType_t;
 
+/* Exported defines ---------------------------------------------------------*/
+/* AUDIO_SAMPLING_FREQUENCY defined in SensorTile.box_conf.h! */
+#define PCM_BUFFER_SIZE     (AUDIO_SAMPLING_FREQUENCY / 1000)
+
+/* Exported variables ------------------------------------------------------*/
+
 /* Exported functions prototypes ---------------------------------------------*/
 void ErrorHandler(ErrorType_t ErrorType);
 
 #endif /* __MAIN_H */
 
 /****END OF FILE****/
+

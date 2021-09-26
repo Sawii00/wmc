@@ -46,3 +46,5 @@
 #define AI_TOOLS_API_VERSION_MICRO (0)
 
 #endif /*AI_WMC_CONFIG_H*/
+
+/****END OF FILE****/

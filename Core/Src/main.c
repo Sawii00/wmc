@@ -1,21 +1,26 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "arm_math.h"
-#include "wmc_processing.h"
 
-/* Private variables ---------------------------------------------------------*/
-uint8_t ChangeApplicationMode = 0;
-uint8_t DoubleClick = 0;
+/* Exported variables --------------------------------------------------------*/
+/* Buffer to store microphone samples */
+uint16_t PCMBuffer[PCM_BUFFER_SIZE];
 
-uint8_t AudioLogEnabled = 0;
-uint8_t WMCEnabled = 1;
-
-osSemaphoreId_t enableSem_id;
 osSemaphoreId_t AUDIOLOGSem_id;
 osSemaphoreId_t WMCSem_id;
 
+/* Private variables ---------------------------------------------------------*/
+uint8_t ChangeApplicationMode = 0;
+uint8_t AudioLogEnabled = 0;
+uint8_t WMCEnabled = 1;
+
+/* Semaphore to enable wmc or audio logging */
+osSemaphoreId_t enableSem_id;
+
+/* Timer to detect a double click */
+uint8_t DoubleClick = 0;
 osTimerId_t doubleClickTimer_id;
 
+/* Main thread definition */
 osThreadId_t mainThread_id;
 const osThreadAttr_t mainThread_attr = {
   .name = "mainThread",
@@ -23,27 +28,22 @@ const osThreadAttr_t mainThread_attr = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 
-/* TODO: Change copying from SENSING1 */
-#define FILL_BUFFER_SIZE 1024
-#define PCM_AUDIO_IN_SAMPLES     (AUDIO_SAMPLING_FREQUENCY / 1000)
-float32_t Proc_Buffer_f[FILL_BUFFER_SIZE];
-uint16_t PCM_Buffer[PCM_AUDIO_IN_SAMPLES];
-int16_t Fill_Buffer[2048];
-static volatile uint32_t runs = 0;
-static uint32_t index_buff_fill = 0;
-static volatile uint8_t add_samples = 0;
-extern uint16_t IntermediateBuffer[INTERMEDIATE_BUFFER_SIZE];
-extern float32_t Spectrogram[16896];
+/* Initialize microphone parameters */
+BSP_AUDIO_Init_t MicParams;
 
 /* Private function prototypes -----------------------------------------------*/
 static void MainThread(void *argument);
 static void ArduinoTriggerInit(void);
-static void InitSensorTilebox(void);
 static void DoubleClickTimerCallback(void *argument);
 static void SystemClock_Config(void);
-static void WMC_RecordingProcess(void);
-void WMC_StartRecording(void);
-void WMC_StopRecording(void);
+
+/* Init/deinit microphones */
+void InitMic(void);
+void DeInitMic(void);
+
+/* Start/top audio recording audio logging or wmc */
+void StartRecording(void);
+void StopRecording(void);
 
 /**
   * @brief  The application entry point.
@@ -60,8 +60,20 @@ int main(void)
   /*Initialize trigger for the Arduino Uno */
   //ArduinoTriggerInit();
 
-  /* Initialize compontents of the SensorTile.box */
-  InitSensorTilebox();
+  /* Initialize LEDs */
+  BSP_LED_Init(LED_BLUE);
+  BSP_LED_Init(LED_GREEN);
+  BSP_LED_Init(LED_RED);
+
+  /* Initialize user button */
+  BSP_PB_Init(BUTTON_KEY, BUTTON_MODE_EXTI);
+
+  /* Initalize SD card and microphone */
+  AUDIOLOG_SDInit();
+  InitMic();
+
+  /* Initialize WMC alogrithm */
+  WMC_Init();
 
   /* Init scheduler */
   osKernelInitialize();
@@ -86,9 +98,6 @@ static void MainThread(void *argument)
   WMCSem_id = osSemaphoreNew(1U, 0U, NULL);
 
   doubleClickTimer_id = osTimerNew(DoubleClickTimerCallback, osTimerOnce, (void *)0, NULL);
-
-  //AUDIOLOG_SDInit();
- // WMC_Init();
 
   /* Show everything is ready: default mode is classification */
   BSP_LED_On(LED_GREEN);
@@ -123,7 +132,7 @@ static void MainThread(void *argument)
     else {
       if(AudioLogEnabled == 1) {
         AUDIOLOG_Enable();
-	AUDIOLOG_StartRecording();
+	StartRecording();
 
       	/* TODO: How many times */
         for(int i=0; i<1000; i++) {
@@ -131,35 +140,125 @@ static void MainThread(void *argument)
           AUDIOLOG_Save2SD();
         }
 	AUDIOLOG_Disable();
-	AUDIOLOG_StopRecording();
+	StopRecording();
       }
       else {
         /* Run wood moisture classification algorithm */
         osDelay(1000);
-	add_samples = 0;
-	index_buff_fill = 0;
-	runs = 0;
-	WMC_Init();
 	BSP_LED_On(LED_BLUE);
-	WMC_StartRecording();
+	StartRecording();
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
 
 	for(int i=0; i<32; i++) {
           osSemaphoreAcquire(WMCSem_id, osWaitForever);
-          WMC_Process(Proc_Buffer_f);
+          WMC_Process();
         }
-	WMC_StopRecording();
+	StopRecording();
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
-	ai_float dense_2_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
-	WMC_Run(Spectrogram, dense_2_out);
+	ai_float cnn_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
+	WMC_Run(cnn_out);
 
 	BSP_LED_Off(LED_BLUE);
 
-	WMC_ClassificationResult(dense_2_out);
+	WMC_ClassificationResult(cnn_out);
 	BSP_LED_On(LED_GREEN);
      }
     }
   }
+}
+
+/** @brief Initialize microphone
+  * @param  None
+  * @retval None
+  */
+void InitMic(void)
+{
+  MicParams.BitsPerSample = 16;
+  MicParams.ChannelsNbr = 1;
+  MicParams.Device = AMIC_ONBOARD;
+  MicParams.SampleRate = AUDIO_SAMPLING_FREQUENCY;
+  MicParams.Volume = 32;
+
+  if(BSP_AUDIO_IN_Init(BSP_AUDIO_IN_INSTANCE, &MicParams) != BSP_ERROR_NONE) {
+    ErrorHandler(ERROR_AUDIO);
+  }
+}
+
+/** @brief DeInitialize microphone
+  * @param  None
+  * @retval None
+  */
+void DeInitMic(void)
+{
+  if(BSP_AUDIO_IN_DeInit(BSP_AUDIO_IN_INSTANCE) != BSP_ERROR_NONE) {
+    ErrorHandler(ERROR_AUDIO);
+  }
+}
+
+/**
+  * @brief  Start audio recording i.e fill the PCM buffer
+  * @param  None
+  * @retval None
+  */
+void StartRecording(void)
+{
+  /* Start filling the intermediate buffer */
+  if(BSP_AUDIO_IN_Record(BSP_AUDIO_IN_INSTANCE, (uint8_t *)PCMBuffer, PCM_BUFFER_SIZE*2) != BSP_ERROR_NONE) {
+    ErrorHandler(ERROR_AUDIO);
+  }
+}
+
+/**
+  * @brief  Stop audio recording
+  * @param  None
+  * @retval None
+  */
+void StopRecording(void)
+{
+  /* Stop filling the intermediate buffer */
+  if(BSP_AUDIO_IN_Stop(BSP_AUDIO_IN_INSTANCE) != BSP_ERROR_NONE) {
+    ErrorHandler(ERROR_AUDIO);
+  }
+}
+
+/**
+  * @brief  Half Transfer user callback, called by BSP functions.
+  * @param  uint32_t Instance Not used
+  * @retval None
+  */
+void BSP_AUDIO_IN_HalfTransfer_CallBack(uint32_t Instance)
+{
+  if(AudioLogEnabled == 1) {
+    AUDIOLOG_RecordingProcess(PCMBuffer);
+  }
+  else {
+    WMC_RecordingProcess(PCMBuffer);
+  }
+}
+
+/**
+  * @brief  Transfer Complete user callback, called by BSP functions.
+  * @param  uint32_t Instance Not used
+  * @retval None
+  */
+void BSP_AUDIO_IN_TransferComplete_CallBack(uint32_t Instance)
+{
+  if(AudioLogEnabled == 1) {
+    AUDIOLOG_RecordingProcess(PCMBuffer);
+  }
+  else {
+    WMC_RecordingProcess(PCMBuffer);
+  }
+}
+
+/**
+  * @brief  Manages the BSP audio in error event.
+  * @param  Instance Audio in instance.
+  * @retval None.
+  */
+void BSP_AUDIO_IN_Error_CallBack(uint32_t Instance)
+{
+  ErrorHandler(ERROR_AUDIO);
 }
 
 static void ArduinoTriggerInit(void)
@@ -178,72 +277,20 @@ static void ArduinoTriggerInit(void)
 }
 
 /**
-* @brief  Function that is called when data has been appended to Fill Buffer
-* @param  none
-* @retval None
-*/
-static void WMC_RecordingProcess(void)
-{
-  float32_t sample;
-
-  /* Create a 64ms (1024 samples) window every 32ms (512 samples)
-   Audio Feature Extraction is ran every 32ms on a 64ms window (50% overlap) */
-  if (index_buff_fill >= 1024) {
-    add_samples = index_buff_fill - 1024;
-
-    /* Copy Fill Buffer in Proc Buffer */
-    for (uint32_t i = 0; i < FILL_BUFFER_SIZE; i++) {
-      sample = ((float32_t) Fill_Buffer[i]);
-      /* Invert the scale of the data */
-      sample /= (float32_t) ((1 << (8 * sizeof(int16_t) - 1)));
-      Proc_Buffer_f[i] = sample;
-    }
-
-    runs += 1;
-
-    /* Left shift Fill Buffer by 512 samples */
-    memmove(Fill_Buffer, Fill_Buffer + (FILL_BUFFER_SIZE / 2), sizeof(int16_t) * ((FILL_BUFFER_SIZE / 2) + add_samples));
-    index_buff_fill = (FILL_BUFFER_SIZE / 2 + add_samples);
-
-    osSemaphoreRelease(WMCSem_id);
-  }
-}
-
-/**
- * @brief Initialize SensorTile.box components
- * @param None
- * @retval None
- */
-static void InitSensorTilebox(void)
-{
-  /* Initialize LEDs */
-  BSP_LED_Init(LED_BLUE);
-  BSP_LED_Init(LED_GREEN);
-  BSP_LED_Init(LED_RED);
-
-  /* Initialize user button */
-  BSP_PB_Init(BUTTON_KEY, BUTTON_MODE_EXTI);
-
-  /* Initalize SD card and microphone */
-  //AUDIOLOG_SDInit();
-  AUDIOLOG_InitMic();
-}
-
-/**
- * @brief Double click on user button callback function
- * @param None
- * @retval None
- */
+  * @brief Double click on user button callback function
+  * @param None
+  * @retval None
+  */
 static void DoubleClickTimerCallback (void *argument)
 {
   DoubleClick = 0;
 }
 
 /**
- * @brief  EXTI line detection callback.
- * @param  uint16_t GPIO_Pin Specifies the pin connected EXTI line
- * @retval None
- */
+  * @brief  EXTI line detection callback.
+  * @param  uint16_t GPIO_Pin Specifies the pin connected EXTI line
+  * @retval None
+  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   if(GPIO_Pin == KEY_BUTTON_PIN) {
@@ -261,81 +308,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 
 /**
-* @brief  Half Transfer user callback, called by BSP functions.
-* @param  uint32_t Instance Not used
-* @retval None
-*/
-void BSP_AUDIO_IN_HalfTransfer_CallBack(uint32_t Instance)
-{
-  if(AudioLogEnabled == 1) {
-    AUDIOLOG_RecordingProcess(IntermediateBuffer, INTERMEDIATE_BUFFER_SIZE);
-  }
-  else {
-    /* Copy PCM_Buffer from Microphones onto Fill_Buffer */
-    memcpy(Fill_Buffer + index_buff_fill, PCM_Buffer, sizeof(int16_t) * PCM_AUDIO_IN_SAMPLES);
-    index_buff_fill += PCM_AUDIO_IN_SAMPLES;
-
-    WMC_RecordingProcess();
-  }
-}
-
-/**
-* @brief  Transfer Complete user callback, called by BSP functions.
-* @param  uint32_t Instance Not used
-* @retval None
-*/
-void BSP_AUDIO_IN_TransferComplete_CallBack(uint32_t Instance)
-{
-  if(AudioLogEnabled == 1) {
-    AUDIOLOG_RecordingProcess(IntermediateBuffer, INTERMEDIATE_BUFFER_SIZE);
-  }
-  else {
-    /* Copy PCM_Buffer from Microphones onto Fill_Buffer */
-    memcpy(Fill_Buffer + index_buff_fill, PCM_Buffer, sizeof(int16_t) * PCM_AUDIO_IN_SAMPLES);
-    index_buff_fill += PCM_AUDIO_IN_SAMPLES;
-
-    WMC_RecordingProcess();
-  }
-}
-
-/**
-  * @brief  Manages the BSP audio in error event.
-  * @param  Instance Audio in instance.
-  * @retval None.
-  */
-void BSP_AUDIO_IN_Error_CallBack(uint32_t Instance)
-{
-  ErrorHandler(ERROR_AUDIO);
-}
-
-/**
-  * @brief  Start audio recording i.e fill intermediate buffer
-  * @param  None
-  * @retval None
-  */
-void WMC_StartRecording(void)
-{
-  /* Start filling the intermediate buffer */
-  if(BSP_AUDIO_IN_Record(BSP_AUDIO_IN_INSTANCE, (uint8_t *)PCM_Buffer, PCM_AUDIO_IN_SAMPLES*2) != BSP_ERROR_NONE) {
-    ErrorHandler(ERROR_AUDIO);
-  }
-}
-
-/**
-  * @brief  Stop audio recording
-  * @param  None
-  * @retval None
-  */
-void WMC_StopRecording(void)
-{
-  /* Stop filling the intermediate buffer */
-  if(BSP_AUDIO_IN_Stop(BSP_AUDIO_IN_INSTANCE) != BSP_ERROR_NONE) {
-    ErrorHandler(ERROR_AUDIO);
-  }
-}
-
-/**
-* @brief  System Clock tree configuration
+  * @brief  System Clock tree configuration
   * @param  None
   * @retval None
   */

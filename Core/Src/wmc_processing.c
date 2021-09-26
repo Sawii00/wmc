@@ -1,16 +1,32 @@
 /* Includes ------------------------------------------------------------------*/
 #include "wmc_processing.h"
-#include "ai.h"
-#include "ai_platform.h"
 
-#include "wmc_featurescaler.h"
+/* Imported variables --------------------------------------------------------*/
+/* Buffer to store microphone samples, defined in main.c */
+extern uint16_t PCMBuffer[];
+
+extern osSemaphoreId_t WMCSem_id;
+
+/* Private defines   ---------------------------------------------------------*/
+#define FFT_SIZE         1024
+#define MEL_SIZE         30
+
+#define SPECTROGRAM_ROWS MEL_SIZE
+#define SPECTROGRAM_COLS 32
 
 /* Private variables ---------------------------------------------------------*/
-float32_t Spectrogram[SPECTROGRAM_ROWS*SPECTROGRAM_COLS];
+/* Process buffers for WMC algorithm */
+static int16_t WMCBuffer[FFT_SIZE*2];
+static float32_t WMCBuffer_f[FFT_SIZE];
+static uint32_t WMCBufferIndex;
+
+/* Spectrogram which results from FFT */
+static float32_t Spectrogram[SPECTROGRAM_ROWS*SPECTROGRAM_COLS];
 static float32_t SpectrogramColBuffer[SPECTROGRAM_ROWS];
 static uint32_t SpectrogramColIndex;
 float32_t WorkingBuffer[FFT_SIZE];
 
+/* Variables for LogMel spectrogram */
 static arm_rfft_fast_instance_f32 S_Rfft;
 static MelFilterTypeDef           S_MelFilter;
 uint32_t pMelFilterStartIndices[30];
@@ -19,60 +35,88 @@ float32_t pMelFilterCoefs[968];
 static SpectrogramTypeDef         S_Spectr;
 static MelSpectrogramTypeDef      S_MelSpectr;
 
-static void Preprocessing_Init(void);
-static void StandardizeFeatures(float32_t *pSpectrogram);
+/* Private function prototypes -----------------------------------------------*/
+static void PreprocessingInit(void);
+static void NormalizeFeatures(float32_t *pSpectrogram);
 static void PowerTodB(float32_t *pSpectrogram);
 
 /* Exported functions --------------------------------------------------------*/
 /**
-  * @brief  Create and Init WMC Convolutional Neural Network
+  * @brief  Create and init WMC convolutional neural network
   * @param  None
-  * @retval WMC status
+  * @retval None
   */
-WMC_Status_t WMC_Init(void)
+void WMC_Init(void)
 {
-  if (AI_WMC_IN_1_SIZE != (SPECTROGRAM_ROWS*SPECTROGRAM_COLS)) {
-    return WMC_ERROR;
-  }
-
   /* Configure audio preprocessing */
-  Preprocessing_Init();
+  PreprocessingInit();
 
- /* Enabling CRC clock for using AI libraries (to checking if STM32
+ /* Enabling CRC clock for using AI libraries (to check if STM32
   microprocessor is used) */
   __HAL_RCC_CRC_CLK_ENABLE();
 
   ai_init();
-
-  return WMC_OK;
 }
 
 /**
   * @brief  DeInit WMC Convolutional Neural Network
   * @param  None
-  * @retval WMC status
+  * @retval None
   */
-WMC_Status_t WMC_DeInit(void)
+void WMC_DeInit(void)
 {
-
   /* Disable CRC Clock */
   __HAL_RCC_CRC_CLK_DISABLE();
 
   ai_deinit();
-
-  return WMC_OK;
 }
 
 /**
- * @brief  Process Wood Moisture Classification (WMC) algorithm
- * @note   This function needs to be executed multiple times to extract audio features
- * @param None
- * @retval WMC status
- */
-WMC_Status_t WMC_Process(float32_t *pBuffer)
+  * @brief  Function that is called when data has been appended to WMC buffer
+  * @param  pPCMBuffer  Pointer to PCM buffer, data from microphone
+  * @retval None
+  */
+void WMC_RecordingProcess(uint16_t *pPCMBuffer)
+{
+  static volatile uint32_t cut_off_samples = 0;
+
+  /* Copy PCM_Buffer from microphones onto WMC_Buffer */
+  memcpy(WMCBuffer + WMCBufferIndex, pPCMBuffer, sizeof(int16_t) * PCM_BUFFER_SIZE);
+  WMCBufferIndex += PCM_BUFFER_SIZE;
+
+  float32_t sample;
+
+  /* Create 1024 (FFT_SIZE) samples window every 512 samples */
+  if (WMCBufferIndex >= FFT_SIZE) {
+    /* The FFT_SIZE is not in sync with the audio frequency, samples
+     which are to much get chopped off and added later */
+    cut_off_samples = WMCBufferIndex - 1024;
+
+    /* Copy Fill Buffer in Proc Buffer */
+    for (uint32_t i = 0; i < FFT_SIZE; i++) {
+      sample = ((float32_t) WMCBuffer[i]);
+      /* Invert the scale of the data */
+      sample /= (float32_t) ((1 << (8 * sizeof(int16_t) - 1)));
+      WMCBuffer_f[i] = sample;
+    }
+
+    /* Left shift WMC_Buffer by 512 samples and add the cut off samples */
+    memmove(WMCBuffer, WMCBuffer + (FFT_SIZE / 2), sizeof(int16_t) * ((FFT_SIZE / 2) + cut_off_samples));
+    WMCBufferIndex = FFT_SIZE / 2 + cut_off_samples;
+
+    osSemaphoreRelease(WMCSem_id);
+  }
+}
+
+/**
+  * @brief  Process Wood Moisture Classification (WMC) algorithm
+  * @note   This function needs to be executed multiple times to extract audio features
+  * @retval None
+  */
+void WMC_Process(void)
 {
   /* Create a Mel-scaled spectrogram column */
-  MelSpectrogramColumn(&S_MelSpectr, pBuffer, SpectrogramColBuffer);
+  MelSpectrogramColumn(&S_MelSpectr, WMCBuffer_f, SpectrogramColBuffer);
 
   /* Reshape and copy into output spectrogram column */
   for (uint32_t i=0; i<MEL_SIZE; i++) {
@@ -81,43 +125,42 @@ WMC_Status_t WMC_Process(float32_t *pBuffer)
   SpectrogramColIndex++;
 
   if (SpectrogramColIndex == SPECTROGRAM_COLS) {
+    /* Set index to 0 for next run of algorithm */
+    WMCBufferIndex = 0;
     SpectrogramColIndex = 0;
 
     PowerTodB(Spectrogram);
-    StandardizeFeatures(Spectrogram);
-
-    return WMC_OK;
-  }
-  else {
-    return WMC_ERROR;
+    NormalizeFeatures(Spectrogram);
   }
 }
 
 /**
- * @brief  WMC Convolutional Neural Net inference
- * @param  pSpectrogram Feature inputs for CNN
- * @param  pNetworkOut Outputs of CNN
- * @retval WMC classification result
- */
-WMC_Status_t WMC_Run(float32_t *pSpectrogram, float32_t *pNetworkOut)
+  * @brief  WMC convolutional neural net inference
+  * @param  pCNNOut outputs of CNN
+  * @retval None
+  */
+void WMC_Run(float32_t *pCNNOut)
 {
-  ai_run(pSpectrogram, pNetworkOut);
-
-  return WMC_OK;
+  ai_run(Spectrogram, pCNNOut);
 }
 
-WMC_Status_t WMC_ClassificationResult(float32_t *pNNOut)
+/**
+  * @brief  Blink LED in function of classification result
+  * @param  pCNNOut outputs of CNN
+  * @retval None
+  */
+void WMC_ClassificationResult(float32_t *pCNNOut)
 {
   float32_t max_out;
   uint32_t classification_result;
 
 /* ArgMax to associate NN output with the most likely classification label */
-  max_out = pNNOut[0];
+  max_out = pCNNOut[0];
   classification_result = 0;
 
   for (uint32_t i = 1; i<3; i++) {
-    if (pNNOut[i] > max_out) {
-      max_out = pNNOut[i];
+    if (pCNNOut[i] > max_out) {
+      max_out = pCNNOut[i];
       classification_result = i;
     }
   }
@@ -146,15 +189,14 @@ WMC_Status_t WMC_ClassificationResult(float32_t *pNNOut)
         HAL_Delay(250);
       }
     }
-  return WMC_OK;
 }
 
 /**
- * @brief  Standardize input features
- * @param  pSpectrogram Feature inputs for CNN
- * @retval WMC classification result
- */
-static void StandardizeFeatures(float32_t *pSpectrogram)
+  * @brief  Normalize input features
+  * @param  pSpectrogram Feature inputs for CNN
+  * @retval None
+  */
+static void NormalizeFeatures(float32_t *pSpectrogram)
 {
   /* Zero mean and variance and on input feature */
   for (uint32_t i=0; i<SPECTROGRAM_ROWS*SPECTROGRAM_COLS; i++) {
@@ -163,11 +205,11 @@ static void StandardizeFeatures(float32_t *pSpectrogram)
 }
 
 /**
- * @brief Initialize LogMel preprocessing
- * @param none
- * @retval none
- */
-static void Preprocessing_Init(void)
+  * @brief Initialize LogMel preprocessing
+  * @param None
+  * @retval None
+  */
+static void PreprocessingInit(void)
 {
   /* Init RFFT */
   arm_rfft_fast_init_f32(&S_Rfft, 1024);
@@ -201,10 +243,10 @@ static void Preprocessing_Init(void)
 }
 
 /**
- * @brief      LogMel Spectrum Calculation when all columns are populated
- * @param      pSpectrogram  Mel-scaled power spectrogram
- * @retval     None
- */
+  * @brief      LogMel Spectrum Calculation when all columns are populated
+  * @param      pSpectrogram  Mel-scaled power spectrogram
+  * @retval     None
+  */
 static void PowerTodB(float32_t *pSpectrogram)
 {
   float32_t max_mel_energy = 0.0f;

@@ -1,7 +1,3 @@
-#ifdef __cplusplus
- extern "C" {
-#endif
-
 /* Includes ------------------------------------------------------------------*/
 /* System headers */
 #include <stdint.h>
