@@ -2,3 +2,5 @@ build
 tags
 debug
 flash_commands
+
+.ipynb_checkpoints
