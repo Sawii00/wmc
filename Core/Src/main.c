@@ -57,9 +57,6 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /*Initialize trigger for the Arduino Uno */
-  //ArduinoTriggerInit();
-
   /* Initialize LEDs */
   BSP_LED_Init(LED_BLUE);
   BSP_LED_Init(LED_GREEN);
@@ -74,6 +71,9 @@ int main(void)
 
   /* Initialize WMC alogrithm */
   WMC_Init();
+
+  /* Initialize trigger for the Arduino Uno */
+  ArduinoTriggerInit();
 
   /* Init scheduler */
   osKernelInitialize();
@@ -111,15 +111,15 @@ static void MainThread(void *argument)
     if(ChangeApplicationMode == 1) {
       if(WMCEnabled == 1) {
         AudioLogEnabled = 1;
-	WMCEnabled = 0;
+		WMCEnabled = 0;
 
-	/* Green LED shows that audio logging mode is on */
-	BSP_LED_Off(LED_BLUE);
-	BSP_LED_On(LED_GREEN);
-      }
-      else {
-        WMCEnabled = 1;
-	AudioLogEnabled = 0;
+		/* Green LED shows that audio logging mode is on */
+		BSP_LED_Off(LED_BLUE);
+		BSP_LED_On(LED_GREEN);
+		}
+		else {
+		WMCEnabled = 1;
+		  AudioLogEnabled = 0;
 
 	/* BLUE LED shows that classification mode is on */
 	BSP_LED_Off(LED_GREEN);
@@ -134,43 +134,40 @@ static void MainThread(void *argument)
         /* Blue LED on while recording */
         BSP_LED_On(LED_BLUE);
 
-	AUDIOLOG_Enable();
-	StartRecording();
+		AUDIOLOG_Enable();
+		StartRecording();
 
-      	/* TODO: How many times */
-	/* Saving to SD card happens every 64*48/2=1036 samples
-	 * with 48kHz sampling thus every 32ms */
-        for(int i=0; i<1000; i++) {
+		/* Saving to SD card happens every 48*64/2=1536 samples
+		* with 48kHz sampling thus every 32ms */
+        for(int i=0; i<(16896/1536*30); i++) {
           osSemaphoreAcquire(AUDIOLOGSem_id, osWaitForever);
           AUDIOLOG_Save2SD();
         }
-	AUDIOLOG_Disable();
-	StopRecording();
+		AUDIOLOG_Disable();
+		StopRecording();
 
-	BSP_LED_Off(LED_BLUE);
+		BSP_LED_Off(LED_BLUE);
       }
       else {
         /* Run wood moisture classification algorithm */
         osDelay(1000);
-	BSP_LED_On(LED_GREEN);
-	StartRecording();
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
+		BSP_LED_On(LED_GREEN);
+		StartRecording();
 
-	for(int i=0; i<32; i++) {
-          osSemaphoreAcquire(WMCSem_id, osWaitForever);
-          WMC_Process();
-        }
-	StopRecording();
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
-	ai_float cnn_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
-	WMC_Run(cnn_out);
+		for(int i=0; i<32; i++) {
+			  osSemaphoreAcquire(WMCSem_id, osWaitForever);
+			  WMC_Process();
+			}
+		StopRecording();
+		ai_float cnn_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
+		WMC_Run(cnn_out);
 
-	BSP_LED_Off(LED_GREEN);
-	BSP_LED_Off(LED_BLUE);
+		BSP_LED_Off(LED_GREEN);
+		BSP_LED_Off(LED_BLUE);
 
-	WMC_ClassificationResult(cnn_out);
-	BSP_LED_On(LED_GREEN);
-     }
+		WMC_ClassificationResult(cnn_out);
+		BSP_LED_On(LED_GREEN);
+      }
     }
   }
 }
@@ -234,9 +231,8 @@ void StopRecording(void)
   * @param  uint32_t Instance Not used
   * @retval None
   */
-void BSP_AUDIO_IN_HalfTransfer_CallBack(uint32_t Instance)
-{
-  if(AudioLogEnabled == 1) {
+void BSP_AUDIO_IN_HalfTransfer_CallBack(uint32_t Instance) {
+	if(AudioLogEnabled == 1) {
     AUDIOLOG_RecordingProcess(PCMBuffer);
   }
   else {
@@ -251,6 +247,25 @@ void BSP_AUDIO_IN_HalfTransfer_CallBack(uint32_t Instance)
   */
 void BSP_AUDIO_IN_TransferComplete_CallBack(uint32_t Instance)
 {
+  /* Arduino trigger in every spectrogram */
+  static volatile uint32_t ARDUINOTriggerCounter = 0;
+  ARDUINOTriggerCounter += PCM_BUFFER_SIZE*2;
+
+  /* Trigger arduino after 512*3 samples */
+  if (ARDUINOTriggerCounter == (PCM_BUFFER_SIZE*12*3)) {
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
+	BSP_LED_On(LED_RED);
+  }
+  /* Stop Arduino after 16896-512*3 samples */
+  else if (ARDUINOTriggerCounter == (PCM_BUFFER_SIZE*12*4)) {
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
+	BSP_LED_Off(LED_RED);
+  }
+  else if (ARDUINOTriggerCounter == 16896) {
+	  ARDUINOTriggerCounter = 0;
+  }
+
+
   if(AudioLogEnabled == 1) {
     AUDIOLOG_RecordingProcess(PCMBuffer);
   }
@@ -269,11 +284,16 @@ void BSP_AUDIO_IN_Error_CallBack(uint32_t Instance)
   ErrorHandler(ERROR_AUDIO);
 }
 
+/**
+  * @brief Initialize SWDIO pin to trigger the arduino.
+  * @param None
+  * @retval None
+  */
 static void ArduinoTriggerInit(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  /*Configure GPIO pin Output Level */
+  /*Configure GPIO pin output level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PA13 */
