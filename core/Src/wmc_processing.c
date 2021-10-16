@@ -16,7 +16,7 @@ extern osSemaphoreId_t WMCSem_id;
 
 /* Private variables ---------------------------------------------------------*/
 /* Process buffers for WMC algorithm */
-static int16_t WMCBuffer[FFT_SIZE*2];
+int16_t WMCBuffer[FFT_SIZE*2];
 static float32_t WMCBuffer_f[FFT_SIZE];
 static uint32_t WMCBufferIndex;
 
@@ -90,9 +90,9 @@ void WMC_RecordingProcess(uint16_t *pPCMBuffer)
   if (WMCBufferIndex >= FFT_SIZE) {
     /* The FFT_SIZE is not in sync with the audio frequency, samples
      which are to much get chopped off and added later */
-    cut_off_samples = WMCBufferIndex - 1024;
+    cut_off_samples = WMCBufferIndex - 1024;	
 
-    /* Copy Fill Buffer in Proc Buffer */
+	/* Copy Fill Buffer in Proc Buffer */
     for (uint32_t i = 0; i < FFT_SIZE; i++) {
       sample = ((float32_t) WMCBuffer[i]);
       /* Invert the scale of the data */

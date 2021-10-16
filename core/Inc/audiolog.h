@@ -29,6 +29,7 @@ void AUDIOLOG_Disable(void);
 void AUDIOLOG_RecordingProcess(uint16_t *pPCMBuffer);
 void AUDIOLOG_Save2SD(void);
 
+void WMC_Save2SD(uint16_t *WMC_Buffer, uint8_t end);
 #ifdef __cplusplus
 }
 #endif

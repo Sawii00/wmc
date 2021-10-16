@@ -5,13 +5,15 @@
 /* Buffer to store microphone samples */
 uint16_t PCMBuffer[PCM_BUFFER_SIZE];
 
+extern uint16_t WMCBuffer[];
+
 osSemaphoreId_t AUDIOLOGSem_id;
 osSemaphoreId_t WMCSem_id;
 
 /* Private variables ---------------------------------------------------------*/
 uint8_t ChangeApplicationMode = 0;
-uint8_t AudioLogEnabled = 1;
-uint8_t WMCEnabled = 0;
+uint8_t AudioLogEnabled = 0;
+uint8_t WMCEnabled = 1;
 
 /* Semaphore to enable wmc or audio logging */
 osSemaphoreId_t enableSem_id;
@@ -143,22 +145,30 @@ static void MainThread(void *argument)
           osSemaphoreAcquire(AUDIOLOGSem_id, osWaitForever);
           AUDIOLOG_Save2SD();
         }
-		AUDIOLOG_Disable();
 		StopRecording();
+		AUDIOLOG_Disable();
 
 		BSP_LED_Off(LED_BLUE);
       }
       else {
         /* Run wood moisture classification algorithm */
-        osDelay(1000);
+        osDelay(3000);
 		BSP_LED_On(LED_GREEN);
+		AUDIOLOG_Enable();
 		StartRecording();
 
 		for(int i=0; i<32; i++) {
-			  osSemaphoreAcquire(WMCSem_id, osWaitForever);
-			  WMC_Process();
-			}
+		  uint8_t end = 0;
+		  osSemaphoreAcquire(WMCSem_id, osWaitForever);
+
+		  if (i==31) {
+			  end = 1;
+		  }
+		  WMC_Save2SD(WMCBuffer, end);
+		  WMC_Process();
+		}
 		StopRecording();
+		AUDIOLOG_Disable();
 		ai_float cnn_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
 		WMC_Run(cnn_out);
 
@@ -254,12 +264,10 @@ void BSP_AUDIO_IN_TransferComplete_CallBack(uint32_t Instance)
   /* Trigger arduino after 512*3 samples */
   if (ARDUINOTriggerCounter == (PCM_BUFFER_SIZE*12*3)) {
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
-	BSP_LED_On(LED_RED);
   }
   /* Stop Arduino after 16896-512*3 samples */
   else if (ARDUINOTriggerCounter == (PCM_BUFFER_SIZE*12*4)) {
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
-	BSP_LED_Off(LED_RED);
   }
   else if (ARDUINOTriggerCounter == 16896) {
 	  ARDUINOTriggerCounter = 0;

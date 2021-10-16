@@ -155,6 +155,24 @@ void AUDIOLOG_Save2SD(void)
 }
 
 /**
+  * @brief  Save processed audio buffer to SD WAV file
+  * @param  None
+  * @retval None
+  */
+void WMC_Save2SD(uint16_t *WMC_Buffer, uint8_t end)
+{
+  uint16_t length = 512;
+  if(end == 1) {
+	length = 1024;
+  }
+
+  uint32_t bytes_written; /* Written byte count */
+  if( f_write(&AudioFile, (uint8_t *)WMC_Buffer, length*2, (void *)&bytes_written) != FR_OK) {
+    ErrorHandler(ERROR_FATFS);
+  }
+}
+
+/**
   * @brief  Initialize the header for the WAV file
   * @param  None
   * @retval None
