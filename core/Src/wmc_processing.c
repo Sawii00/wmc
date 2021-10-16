@@ -18,6 +18,7 @@ extern osSemaphoreId_t WMCSem_id;
 /* Process buffers for WMC algorithm */
 static int16_t WMCBuffer[FFT_SIZE*2];
 static float32_t WMCBuffer_f[FFT_SIZE];
+static float32_t WMCBuffer_f2[MEL_SIZE];
 static uint32_t WMCBufferIndex;
 
 /* Spectrogram which results from FFT */
@@ -26,17 +27,16 @@ static float32_t SpectrogramColBuffer[SPECTROGRAM_ROWS];
 static uint32_t SpectrogramColIndex;
 float32_t WorkingBuffer[FFT_SIZE];
 
-/* Variables for LogMel spectrogram */
+/* Variables for Spectrogram */
 static arm_rfft_fast_instance_f32 S_Rfft;
-static MelFilterTypeDef           S_MelFilter;
-uint32_t pMelFilterStartIndices[30];
-uint32_t pMelFilterStopIndices[30];
-float32_t pMelFilterCoefs[968];
-static SpectrogramTypeDef         S_Spectr;
-static MelSpectrogramTypeDef      S_MelSpectr;
+uint32_t FilterStartIndices[30];
+uint32_t FilterStopIndices[30];
 
 /* Private function prototypes -----------------------------------------------*/
 static void PreprocessingInit(void);
+static void FilterBankInit(uint32_t *FilterStartIndices, uint32_t *FilterStopIndices);
+static void FilterBank(float32_t *pSpectrCol, float32_t *pFilterCol);
+static void SpectrogramColumn(float32_t *pInSignal, float32_t *pOutCol);
 static void NormalizeFeatures(float32_t *pSpectrogram);
 static void PowerTodB(float32_t *pSpectrogram);
 
@@ -116,7 +116,9 @@ void WMC_RecordingProcess(uint16_t *pPCMBuffer)
 void WMC_Process(void)
 {
   /* Create a Mel-scaled spectrogram column */
-  MelSpectrogramColumn(&S_MelSpectr, WMCBuffer_f, SpectrogramColBuffer);
+  SpectrogramColumn(WMCBuffer_f, WMCBuffer_f2);
+
+	FilterBank(WMCBuffer_f2, SpectrogramColBuffer);
 
   /* Reshape and copy into output spectrogram column */
   for (uint32_t i=0; i<MEL_SIZE; i++) {
@@ -205,7 +207,93 @@ static void NormalizeFeatures(float32_t *pSpectrogram)
 }
 
 /**
-  * @brief Initialize LogMel preprocessing
+  * @brief  FFT to get a spectrogram column
+  * @param  pInSignal
+	* @param	pOutCol
+  * @retval None
+  */
+static void SpectrogramColumn(float32_t *pInSignal, float32_t *pOutCol)
+{
+  uint32_t frame_len = 1024;
+  uint32_t n_fft = 1024;
+  float32_t *scratch_buffer = WorkingBuffer;
+
+  float32_t first_energy;
+  float32_t last_energy;
+
+  /* In-place window application (on signal length, not entire n_fft) */
+  /* @note: OK to typecast because hannWin content is not modified */
+  arm_mult_f32(pInSignal, (float32_t*) hannWin_1024, pInSignal, frame_len);
+
+  /* Zero pad if signal frame length is shorter than n_fft */
+  memset(&pInSignal[frame_len], 0, n_fft - frame_len);
+
+  /* FFT */
+  arm_rfft_fast_f32(&S_Rfft, pInSignal, scratch_buffer, 0);
+
+  /* Power spectrum */
+  first_energy = scratch_buffer[0] * scratch_buffer[0];
+  last_energy = scratch_buffer[1] * scratch_buffer[1];
+  pOutCol[0] = first_energy;
+  arm_cmplx_mag_squared_f32(&scratch_buffer[2], &pOutCol[1], (n_fft / 2) - 1);
+  pOutCol[n_fft / 2] = last_energy;
+}
+
+/**
+ * @brief	Filter FFT values into bins
+ * @param   *pSpectrCol points to the input spectrogram
+ * @retval	None
+ */
+static void FilterBank(float32_t *pSpectrCol, float32_t *pFilterCol)
+{
+  uint16_t start_idx;
+  uint16_t stop_idx;
+  float32_t sum;
+
+  for (uint16_t i = 0; i < MEL_SIZE; i++) {
+	  start_idx = FilterStartIndices[i];
+	  stop_idx = FilterStopIndices[i];
+
+    sum = 0.0f;
+    for (uint16_t j = start_idx; j < stop_idx; j++) {
+      sum += pSpectrCol[j];
+    }
+
+    pFilterCol[i] = sum;
+  }
+}
+
+/**
+ * @brief	Store indices for filter bins in arrays
+ * @param   *pFilterStartIndices
+ * @param   *pFilterStopIndices
+ * @retval	None
+ */
+static void FilterBankInit(uint32_t *pFilterStartIndices, uint32_t *pFilterStopIndices)
+{
+	uint16_t start_idx = 107; /* 48000 / 1024 * i > 5000 */
+
+	float32_t fft_freq;
+	float32_t freq_bin;
+
+	for (uint16_t i=0; i<MEL_SIZE; i++) {
+	  FilterStartIndices[i] = start_idx;
+
+	  for (uint16_t j=start_idx; j<FFT_SIZE; j++) {
+		  fft_freq = 48000 / 1024 * i;
+		  freq_bin = 5300 + i * 600;
+
+		  if (fabs(freq_bin-fft_freq) > 300) {
+		    start_idx = j;
+		    FilterStopIndices[i] = j;
+				break;
+	    }
+    }
+	}
+}
+
+/**
+  * @brief Initialize STFT preprocessing
   * @param None
   * @retval None
   */
@@ -214,32 +302,8 @@ static void PreprocessingInit(void)
   /* Init RFFT */
   arm_rfft_fast_init_f32(&S_Rfft, 1024);
 
-  /* Init Spectrogram */
-  S_Spectr.pRfft    = &S_Rfft;
-  S_Spectr.Type     = SPECTRUM_TYPE_POWER;
-  S_Spectr.pWindow  = (float32_t *) hannWin_1024;
-  S_Spectr.SampRate = AUDIO_SAMPLING_FREQUENCY;
-  S_Spectr.FrameLen = 1024;
-  S_Spectr.FFTLen   = 1024;
-  S_Spectr.pScratch = WorkingBuffer;
-
-  /* Init Mel filter */
-  S_MelFilter.pStartIndices = pMelFilterStartIndices;
-  S_MelFilter.pStopIndices  = pMelFilterStopIndices;
-  S_MelFilter.pCoefficients = pMelFilterCoefs;
-  S_MelFilter.NumMels       = 30;
-  S_MelFilter.FFTLen    	= 1024;
-  S_MelFilter.SampRate  	= AUDIO_SAMPLING_FREQUENCY;
-  S_MelFilter.FMin      	= 4000;
-  S_MelFilter.FMax      	= AUDIO_SAMPLING_FREQUENCY / 2;
-  S_MelFilter.Formula   	= MEL_SLANEY;
-  S_MelFilter.Normalize 	= 1;
-  S_MelFilter.Mel2F     	= 1;
-
-  /* Init MelSpectrogram */
-  MelFilterbank_Init(&S_MelFilter);
-  S_MelSpectr.SpectrogramConf = &S_Spectr;
-  S_MelSpectr.MelFilter       = &S_MelFilter;
+  /* Precalculate indices for filterbank */
+  FilterBankInit(FilterStartIndices, FilterStopIndices);
 }
 
 /**

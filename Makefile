@@ -41,7 +41,7 @@ core/Src/audiolog.c \
 core/Src/wmc.c \
 core/Src/wmc_data.c \
 core/Src/wmc_processing.c \
-core/Src/wmc_featurescaler.c \
+core/Src/wmc_tables.c \
 core/Src/ai.c \
 core/Src/sd_diskio_SensorTile.box.c \
 core/Src/stm32l4xx_it.c \
@@ -83,9 +83,6 @@ middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c \
 middlewares/Third_Party/FatFs/src/ff.c \
 middlewares/Third_Party/FatFs/src/ff_gen_drv.c \
 middlewares/Third_Party/FatFs/src/diskio.c \
-middlewares/ST/AI_AudioPreprocessing/Src/feature_extraction.c \
-middlewares/ST/AI_AudioPreprocessing/Src/common_tables.c \
-middlewares/ST/AI_AudioPreprocessing/Src/mel_filterbank.c \
 drivers/BSP/SensorTile.box/SensorTile.box.c \
 drivers/BSP/SensorTile.box/SensorTile.box_audio.c \
 drivers/BSP/SensorTile.box/SensorTile.box_sd.c \
@@ -156,7 +153,6 @@ C_INCLUDES =  \
 -Imiddlewares/Third_Party/FatFs/src/ \
 -Imiddlewares/Third_Party/FatFs/src/drivers \
 -Imiddlewares/ST/AI/Inc \
--Imiddlewares/ST/AI_AudioPreprocessing/Inc \
 -Idrivers/CMSIS/Device/ST/STM32L4xx/Include \
 -Idrivers/CMSIS/Include \
 -Idrivers/CMSIS/DSP/Include \

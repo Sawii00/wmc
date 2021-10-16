@@ -8,9 +8,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "wmc.h"
-#include "wmc_featurescaler.h"
+#include "wmc_tables.h"
 #include "audiolog.h"
-#include "feature_extraction.h"
 #include "ai.h"
 #include "ai_platform.h"
 
