@@ -36,59 +36,59 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
-Core/Src/main.c \
-Core/Src/audiolog.c \
-Core/Src/wmc.c \
-Core/Src/wmc_data.c \
-Core/Src/wmc_processing.c \
-Core/Src/wmc_featurescaler.c \
-Core/Src/ai.c \
-Core/Src/sd_diskio_SensorTile.box.c \
-Core/Src/stm32l4xx_it.c \
-Core/Src/system_stm32l4xx.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ramfunc.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dfsdm.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dfsdm_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_exti.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_sd.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_sd_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_sdmmc.c \
-Middlewares/Third_Party/FreeRTOS/Source/croutine.c \
-Middlewares/Third_Party/FreeRTOS/Source/event_groups.c \
-Middlewares/Third_Party/FreeRTOS/Source/list.c \
-Middlewares/Third_Party/FreeRTOS/Source/queue.c \
-Middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c \
-Middlewares/Third_Party/FreeRTOS/Source/tasks.c \
-Middlewares/Third_Party/FreeRTOS/Source/timers.c \
-Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c \
-Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c \
-Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c \
-Middlewares/Third_Party/FatFs/src/ff.c \
-Middlewares/Third_Party/FatFs/src/ff_gen_drv.c \
-Middlewares/Third_Party/FatFs/src/diskio.c \
-Middlewares/ST/AI_AudioPreprocessing/Src/feature_extraction.c \
-Middlewares/ST/AI_AudioPreprocessing/Src/common_tables.c \
-Middlewares/ST/AI_AudioPreprocessing/Src/mel_filterbank.c \
-Drivers/BSP/SensorTile.box/SensorTile.box.c \
-Drivers/BSP/SensorTile.box/SensorTile.box_audio.c \
-Drivers/BSP/SensorTile.box/SensorTile.box_sd.c \
+core/Src/main.c \
+core/Src/audiolog.c \
+core/Src/wmc.c \
+core/Src/wmc_data.c \
+core/Src/wmc_processing.c \
+core/Src/wmc_featurescaler.c \
+core/Src/ai.c \
+core/Src/sd_diskio_SensorTile.box.c \
+core/Src/stm32l4xx_it.c \
+core/Src/system_stm32l4xx.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ramfunc.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dfsdm.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dfsdm_ex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma_ex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_exti.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_sd.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_sd_ex.c \
+drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_sdmmc.c \
+middlewares/Third_Party/FreeRTOS/Source/croutine.c \
+middlewares/Third_Party/FreeRTOS/Source/event_groups.c \
+middlewares/Third_Party/FreeRTOS/Source/list.c \
+middlewares/Third_Party/FreeRTOS/Source/queue.c \
+middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c \
+middlewares/Third_Party/FreeRTOS/Source/tasks.c \
+middlewares/Third_Party/FreeRTOS/Source/timers.c \
+middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c \
+middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c \
+middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c \
+middlewares/Third_Party/FatFs/src/ff.c \
+middlewares/Third_Party/FatFs/src/ff_gen_drv.c \
+middlewares/Third_Party/FatFs/src/diskio.c \
+middlewares/ST/AI_AudioPreprocessing/Src/feature_extraction.c \
+middlewares/ST/AI_AudioPreprocessing/Src/common_tables.c \
+middlewares/ST/AI_AudioPreprocessing/Src/mel_filterbank.c \
+drivers/BSP/SensorTile.box/SensorTile.box.c \
+drivers/BSP/SensorTile.box/SensorTile.box_audio.c \
+drivers/BSP/SensorTile.box/SensorTile.box_sd.c \
 syscalls.c \
 
 # ASM sources
@@ -143,25 +143,25 @@ C_DEFS =  \
 
 # AS includes
 AS_INCLUDES =  \
--ICore\Inc
+-Icore\Inc
 
 # C includes
 C_INCLUDES =  \
--ICore/Inc \
--IDrivers/STM32L4xx_HAL_Driver/Inc \
--IDrivers/STM32L4xx_HAL_Driver/Inc/Legacy \
--IMiddlewares/Third_Party/FreeRTOS/Source/include \
--IMiddlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 \
--IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F \
--IMiddlewares/Third_Party/FatFs/src/ \
--IMiddlewares/Third_Party/FatFs/src/drivers \
--IMiddlewares/ST/AI/Inc \
--IMiddlewares/ST/AI_AudioPreprocessing/Inc \
--IDrivers/CMSIS/Device/ST/STM32L4xx/Include \
--IDrivers/CMSIS/Include \
--IDrivers/CMSIS/DSP/Include \
--IDrivers/BSP/Components/Common \
--IDrivers/BSP/SensorTile.box
+-Icore/Inc \
+-Idrivers/STM32L4xx_HAL_Driver/Inc \
+-Idrivers/STM32L4xx_HAL_Driver/Inc/Legacy \
+-Imiddlewares/Third_Party/FreeRTOS/Source/include \
+-Imiddlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 \
+-Imiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F \
+-Imiddlewares/Third_Party/FatFs/src/ \
+-Imiddlewares/Third_Party/FatFs/src/drivers \
+-Imiddlewares/ST/AI/Inc \
+-Imiddlewares/ST/AI_AudioPreprocessing/Inc \
+-Idrivers/CMSIS/Device/ST/STM32L4xx/Include \
+-Idrivers/CMSIS/Include \
+-Idrivers/CMSIS/DSP/Include \
+-Idrivers/BSP/Components/Common \
+-Idrivers/BSP/SensorTile.box
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
@@ -184,7 +184,7 @@ LDSCRIPT = STM32L4R9ZIJx_FLASH.ld
 
 # libraries
 LIBS = -lc -lm -lnosys
-LIBDIR = Middlewares/ST/AI/Lib/NetworkRuntime700_CM4_GCC.a Drivers/CMSIS/DSP/Lib/GCC/libarm_cortexM4lf_math.a
+LIBDIR = middlewares/ST/AI/Lib/NetworkRuntime700_CM4_GCC.a drivers/CMSIS/DSP/Lib/GCC/libarm_cortexM4lf_math.a
 LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 
 # default action: build all
