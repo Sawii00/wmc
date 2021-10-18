@@ -139,9 +139,12 @@ static void MainThread(void *argument)
 		AUDIOLOG_Enable();
 		StartRecording();
 
-		/* Saving to SD card happens every 48*64/2=1536 samples
-		* with 48kHz sampling thus every 32ms */
-        for(int i=0; i<(16896/1536*30); i++) {
+		/* TODO: Change to own function? AUDIOLOG_Acquisition?
+		 * On the other hand this way things are simpler */
+		/* Acquisition and saving of samples */
+		/* Saving to SD card happens currently every 48*64/2=1536 samples
+		 * with 48kHz sampling thus every 32ms */
+        for(int i=0; i<(FRAME_SIZE/1536*NB_FRAMES); i++) {
           osSemaphoreAcquire(AUDIOLOGSem_id, osWaitForever);
           AUDIOLOG_Save2SD();
         }
@@ -152,23 +155,29 @@ static void MainThread(void *argument)
       }
       else {
         /* Run wood moisture classification algorithm */
-        osDelay(3000);
+        osDelay(2000); /* Short delay */
 		BSP_LED_On(LED_GREEN);
 		AUDIOLOG_Enable();
 		StartRecording();
 
-		for(int i=0; i<32; i++) {
-		  uint8_t end = 0;
+		/* TODO: Change to own function? WMC_Acquisition? */
+		/* Acquisition and saving of samples */
+		for(int i=0; i<NB_FFTS; i++) {
 		  osSemaphoreAcquire(WMCSem_id, osWaitForever);
 
+		  /* Check for last if last FFT window */
+		  uint8_t at_end = 0;
 		  if (i==31) {
-			  end = 1;
+			  at_end = 1;
 		  }
-		  WMC_Save2SD(WMCBuffer, end);
+
+		  AUDIOLOG_ClassificationSave2SD(at_end);
 		  WMC_Process();
 		}
+
 		StopRecording();
 		AUDIOLOG_Disable();
+
 		ai_float cnn_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
 		WMC_Run(cnn_out);
 

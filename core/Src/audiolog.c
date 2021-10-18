@@ -5,6 +5,10 @@
 /* Buffer to store microphone samples, defined in main.c */
 extern uint16_t PCMBuffer[];
 
+/* Buffer to store samples for wmc algorithm, defined in wmc_processing.c
+ * Used to save to SD during classication mod */
+extern uint16_t WMCBuffer[];
+
 extern osSemaphoreId_t AUDIOLOGSem_id;
 
 /* Private variables ---------------------------------------------------------*/
@@ -113,6 +117,7 @@ void AUDIOLOG_Disable(void)
     ErrorHandler(ERROR_FATFS);
   }
 }
+
 /**
   * @brief  Management of the audio data logging
   * @param  pPCMBuffer  Pointer to PCM buffer, data from microphone
@@ -155,19 +160,21 @@ void AUDIOLOG_Save2SD(void)
 }
 
 /**
-  * @brief  Save processed audio buffer to SD WAV file
-  * @param  None
+  * @brief  Save for the buffer used forclassification to SD WAV file
+  * @param  at_end	Check if if at end of STFT algorithm
   * @retval None
   */
-void WMC_Save2SD(uint16_t *WMC_Buffer, uint8_t end)
+void AUDIOLOG_ClassificationSave2SD(uint8_t at_end)
 {
-  uint16_t length = 512;
-  if(end == 1) {
-	length = 1024;
+  /* Check if end of STFT to store the remaining samples
+   * aswell (which are not overlapping in the STFT algorithm) */
+  uint16_t length = FFT_SIZE / 2;
+  if(at_end == 1) {
+	length = FFT_SIZE;
   }
 
   uint32_t bytes_written; /* Written byte count */
-  if( f_write(&AudioFile, (uint8_t *)WMC_Buffer, length*2, (void *)&bytes_written) != FR_OK) {
+  if( f_write(&AudioFile, (uint8_t *)WMCBuffer, length*2, (void *)&bytes_written) != FR_OK) {
     ErrorHandler(ERROR_FATFS);
   }
 }

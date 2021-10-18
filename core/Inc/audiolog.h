@@ -19,6 +19,10 @@ extern "C" {
 #include "ff_gen_drv.h"
 #include "sd_diskio_SensorTile.box.h"
 
+
+/* Exported defines ----------------------------------------------------------*/
+#define NB_FRAMES 100 /* Number of recorded frames */
+
 /* Exported functions prototypes ---------------------------------------------*/
 void AUDIOLOG_SDInit(void);
 void AUDIOLOG_SDDeInit(void);
@@ -29,7 +33,8 @@ void AUDIOLOG_Disable(void);
 void AUDIOLOG_RecordingProcess(uint16_t *pPCMBuffer);
 void AUDIOLOG_Save2SD(void);
 
-void WMC_Save2SD(uint16_t *WMC_Buffer, uint8_t end);
+void AUDIOLOG_ClassificationSave2SD(uint8_t at_end);
+
 #ifdef __cplusplus
 }
 #endif
