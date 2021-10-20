@@ -77,9 +77,6 @@ int main(void)
   /* Initialize WMC alogrithm */
   WMC_Init();
 
-  /* Initialize trigger for the Arduino Uno */
-  ArduinoTriggerInit();
-
   /* Init scheduler */
   osKernelInitialize();
 
@@ -98,6 +95,11 @@ int main(void)
 
 static void MainThread(void *argument)
 {
+  InitMic();
+  /* Initialize trigger for the Arduino Uno */
+  ArduinoTriggerInit();
+  DeInitMic();
+
   enableSem_id = osSemaphoreNew(1U, 0U, NULL);
   AUDIOLOGSem_id = osSemaphoreNew(1U, 0U, NULL);
   WMCSem_id = osSemaphoreNew(1U, 0U, NULL);
@@ -140,6 +142,7 @@ static void MainThread(void *argument)
 		/* Blue LED on while recording */
         BSP_LED_On(LED_BLUE);
 
+		ArduinoTriggerCounter = 0;
 		AUDIOLOG_Enable();
 		StartRecording();
 
@@ -162,6 +165,8 @@ static void MainThread(void *argument)
         /* Run wood moisture classification algorithm */
         osDelay(2000);
 		BSP_LED_On(LED_GREEN);
+
+		ArduinoTriggerCounter = 0;
 		AUDIOLOG_Enable();
 		StartRecording();
 
