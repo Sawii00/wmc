@@ -14,8 +14,8 @@ extern osSemaphoreId_t WMCSem_id;
 /* Process buffers for WMC algorithm */
 int16_t WMCBuffer[FFT_SIZE*2];
 static float32_t WMCBuffer_f[FFT_SIZE];
-static float32_t WMCBuffer_f2[MEL_SIZE];
-static uint32_t WMCBufferIndex;
+static float32_t WMCBuffer_f2[NB_BINS];
+static uint32_t WMCBufferWriteIndex;
 
 /* Spectrogram which results from FFT */
 static float32_t Spectrogram[NB_BINS*NB_FFTS];
@@ -30,8 +30,8 @@ uint32_t FilterStopIndices[30];
 
 /* Private function prototypes -----------------------------------------------*/
 static void PreprocessingInit(void);
-static void FilterBankInit(uint32_t *FilterStartIndices, uint32_t *FilterStopIndices);
 static void FilterBank(float32_t *pSpectrCol, float32_t *pFilterCol);
+static void FilterBankInit(uint32_t *FilterStartIndices, uint32_t *FilterStopIndices);
 static void SpectrogramColumn(float32_t *pInSignal, float32_t *pOutCol);
 static void NormalizeFeatures(float32_t *pSpectrogram);
 static void PowerTodB(float32_t *pSpectrogram);
@@ -77,18 +77,18 @@ void WMC_RecordingProcess(uint16_t *pPCMBuffer)
   static volatile uint32_t cut_off_samples = 0;
 
   /* Copy PCM_Buffer from microphones onto WMC_Buffer */
-  memcpy(WMCBuffer + WMCBufferIndex, pPCMBuffer, sizeof(int16_t) * PCM_BUFFER_SIZE);
-  WMCBufferIndex += PCM_BUFFER_SIZE;
+  memcpy(WMCBuffer + WMCBufferWriteIndex, pPCMBuffer, sizeof(int16_t) * PCM_BUFFER_SIZE);
+  WMCBufferWriteIndex += PCM_BUFFER_SIZE;
 
   float32_t sample;
 
-  /* Create 1024 (FFT_SIZE) samples window every 512 (HOP_LENGTH) samples */
-  if (WMCBufferIndex >= FFT_SIZE) {
+  /* Create 1024 (FFT_SIZE) samples window every 512 samples */
+  if (WMCBufferWriteIndex >= FFT_SIZE) {
     /* The FFT_SIZE is not in sync with the audio frequency, samples
      which are to much get chopped off and added later */
-    cut_off_samples = WMCBufferIndex - FFT_SIZE;
-	/* Copy Fill Buffer in Proc Buffer */
+    cut_off_samples = WMCBufferWriteIndex - FFT_SIZE;
 
+	/* Copy Fill Buffer in Proc Buffer */
     for (uint32_t i = 0; i < FFT_SIZE; i++) {
       sample = ((float32_t) WMCBuffer[i]);
       /* Invert the scale of the data */
@@ -98,7 +98,7 @@ void WMC_RecordingProcess(uint16_t *pPCMBuffer)
 
     /* Left shift WMC_Buffer by 512 samples and add the cut off samples */
     memmove(WMCBuffer, WMCBuffer + (FFT_SIZE / 2), sizeof(int16_t) * ((FFT_SIZE / 2) + cut_off_samples));
-    WMCBufferIndex = FFT_SIZE / 2 + cut_off_samples;
+    WMCBufferWriteIndex = FFT_SIZE / 2 + cut_off_samples;
 
     osSemaphoreRelease(WMCSem_id);
   }
@@ -124,7 +124,7 @@ void WMC_Process(void)
 
   if (SpectrogramColIndex == NB_FFTS) {
     /* Set index to 0 for next run of algorithm */
-    WMCBufferIndex = 0;
+    WMCBufferWriteIndex = 0;
     SpectrogramColIndex = 0;
 
     PowerTodB(Spectrogram);
@@ -210,8 +210,7 @@ static void NormalizeFeatures(float32_t *pSpectrogram)
   */
 static void SpectrogramColumn(float32_t *pInSignal, float32_t *pOutCol)
 {
-  uint32_t frame_len = 1024;
-  uint32_t n_fft = 1024;
+  uint32_t frame_len = FFT_SIZE;
   float32_t *scratch_buffer = WorkingBuffer;
 
   float32_t first_energy;
@@ -222,7 +221,7 @@ static void SpectrogramColumn(float32_t *pInSignal, float32_t *pOutCol)
   arm_mult_f32(pInSignal, (float32_t*) hannWin_1024, pInSignal, frame_len);
 
   /* Zero pad if signal frame length is shorter than n_fft */
-  memset(&pInSignal[frame_len], 0, n_fft - frame_len);
+  memset(&pInSignal[frame_len], 0, FFT_SIZE - frame_len);
 
   /* FFT */
   arm_rfft_fast_f32(&S_Rfft, pInSignal, scratch_buffer, 0);
@@ -231,8 +230,8 @@ static void SpectrogramColumn(float32_t *pInSignal, float32_t *pOutCol)
   first_energy = scratch_buffer[0] * scratch_buffer[0];
   last_energy = scratch_buffer[1] * scratch_buffer[1];
   pOutCol[0] = first_energy;
-  arm_cmplx_mag_squared_f32(&scratch_buffer[2], &pOutCol[1], (n_fft / 2) - 1);
-  pOutCol[n_fft / 2] = last_energy;
+  arm_cmplx_mag_squared_f32(&scratch_buffer[2], &pOutCol[1], (FFT_SIZE / 2) - 1);
+  pOutCol[FFT_SIZE / 2] = last_energy;
 }
 
 /**
@@ -246,7 +245,7 @@ static void FilterBank(float32_t *pSpectrCol, float32_t *pFilterCol)
   uint16_t stop_idx;
   float32_t sum;
 
-  for (uint16_t i = 0; i < MEL_SIZE; i++) {
+  for (uint16_t i = 0; i < NB_BINS; i++) {
 	  start_idx = FilterStartIndices[i];
 	  stop_idx = FilterStopIndices[i];
 
@@ -272,17 +271,17 @@ static void FilterBankInit(uint32_t *pFilterStartIndices, uint32_t *pFilterStopI
 	float32_t fft_freq;
 	float32_t freq_bin;
 
-	for (uint16_t i=0; i<MEL_SIZE; i++) {
+	for (uint16_t i=0; i<NB_BINS; i++) {
 	  FilterStartIndices[i] = start_idx;
 
 	  for (uint16_t j=start_idx; j<FFT_SIZE; j++) {
-		  fft_freq = 48000 / 1024 * i;
-		  freq_bin = 5300 + i * 600;
+		  fft_freq = (float)AUDIO_SAMPLING_FREQUENCY / (float)FFT_SIZE * (float)j;
+		  freq_bin = 5300.0 + i * 600.0;
 
-		  if (fabs(freq_bin-fft_freq) > 300) {
+		  if (fabs(freq_bin-fft_freq) > 300.0) {
 		    start_idx = j;
 		    FilterStopIndices[i] = j;
-				break;
+			break;
 	    }
     }
 	}
@@ -296,7 +295,7 @@ static void FilterBankInit(uint32_t *pFilterStartIndices, uint32_t *pFilterStopI
 static void PreprocessingInit(void)
 {
   /* Init RFFT */
-  arm_rfft_fast_init_f32(&S_Rfft, 1024);
+  arm_rfft_fast_init_f32(&S_Rfft, FFT_SIZE);
 
   /* Precalculate indices for filterbank */
   FilterBankInit(FilterStartIndices, FilterStopIndices);
@@ -313,22 +312,22 @@ static void PowerTodB(float32_t *pSpectrogram)
   uint32_t i;
 
   /* Find energy Scaling factor */
-  for (i=0; i < NB_BINS*NB_FFTS; i++) {
+  for (i=0; i<NB_BINS*NB_FFTS; i++) {
     max_energy = (max_energy > pSpectrogram[i]) ? max_energy : pSpectrogram[i];
   }
 
   /* Scale energies */
-  for (i=0; i < NB_BINS*NB_FFTS; i++) {
+  for (i=0; i<NB_BINS*NB_FFTS; i++) {
     pSpectrogram[i] /= max_energy;
   }
 
   /* Convert power spectrogram to decibel */
-  for (i=0; i < NB_BINS*NB_FFTS; i++) {
+  for (i=0; i<NB_BINS*NB_FFTS; i++) {
     pSpectrogram[i] = 10.0f * log10f(pSpectrogram[i]);
   }
 
   /* Threshold output to -80.0 dB (TOP_DB) */
-  for (i = 0; i < NB_BINS*NB_FFTS; i++) {
+  for (i = 0; i<NB_BINS*NB_FFTS; i++) {
     pSpectrogram[i] = (pSpectrogram[i] < -TOP_DB) ? (-TOP_DB) : (pSpectrogram[i]);
   }
 }

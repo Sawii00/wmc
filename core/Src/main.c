@@ -12,8 +12,10 @@ osSemaphoreId_t WMCSem_id;
 
 /* Private variables ---------------------------------------------------------*/
 uint8_t ChangeApplicationMode = 0;
-uint8_t AudioLogEnabled = 0;
-uint8_t WMCEnabled = 1;
+uint8_t AudioLogEnabled = 1;
+uint8_t WMCEnabled = 0;
+
+static volatile uint32_t ArduinoTriggerCounter = 0;
 
 /* Semaphore to enable wmc or audio logging */
 osSemaphoreId_t enableSem_id;
@@ -35,6 +37,7 @@ BSP_AUDIO_Init_t MicParams;
 
 /* Private function prototypes -----------------------------------------------*/
 static void MainThread(void *argument);
+static void ArduinoTrigger(void);
 static void ArduinoTriggerInit(void);
 static void DoubleClickTimerCallback(void *argument);
 static void SystemClock_Config(void);
@@ -133,7 +136,8 @@ static void MainThread(void *argument)
     /****Run application****/
     else {
       if(AudioLogEnabled == 1) {
-        /* Blue LED on while recording */
+		osDelay(2000);
+		/* Blue LED on while recording */
         BSP_LED_On(LED_BLUE);
 
 		AUDIOLOG_Enable();
@@ -144,7 +148,8 @@ static void MainThread(void *argument)
 		/* Acquisition and saving of samples */
 		/* Saving to SD card happens currently every 48*64/2=1536 samples
 		 * with 48kHz sampling thus every 32ms */
-        for(int i=0; i<(FRAME_SIZE/1536*NB_FRAMES); i++) {
+		uint32_t nb_saves = FRAME_SIZE / 1536 * NB_FRAMES;
+        for(int i=0; i<nb_saves; i++) {
           osSemaphoreAcquire(AUDIOLOGSem_id, osWaitForever);
           AUDIOLOG_Save2SD();
         }
@@ -155,7 +160,7 @@ static void MainThread(void *argument)
       }
       else {
         /* Run wood moisture classification algorithm */
-        osDelay(2000); /* Short delay */
+        osDelay(2000);
 		BSP_LED_On(LED_GREEN);
 		AUDIOLOG_Enable();
 		StartRecording();
@@ -266,22 +271,7 @@ void BSP_AUDIO_IN_HalfTransfer_CallBack(uint32_t Instance) {
   */
 void BSP_AUDIO_IN_TransferComplete_CallBack(uint32_t Instance)
 {
-  /* Arduino trigger in every spectrogram */
-  static volatile uint32_t ARDUINOTriggerCounter = 0;
-  ARDUINOTriggerCounter += PCM_BUFFER_SIZE*2;
-
-  /* Trigger arduino after 512*3 samples */
-  if (ARDUINOTriggerCounter == (PCM_BUFFER_SIZE*12*3)) {
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
-  }
-  /* Stop Arduino after 16896-512*3 samples */
-  else if (ARDUINOTriggerCounter == (PCM_BUFFER_SIZE*12*4)) {
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
-  }
-  else if (ARDUINOTriggerCounter == 16896) {
-	  ARDUINOTriggerCounter = 0;
-  }
-
+  ArduinoTrigger();
 
   if(AudioLogEnabled == 1) {
     AUDIOLOG_RecordingProcess(PCMBuffer);
@@ -299,6 +289,29 @@ void BSP_AUDIO_IN_TransferComplete_CallBack(uint32_t Instance)
 void BSP_AUDIO_IN_Error_CallBack(uint32_t Instance)
 {
   ErrorHandler(ERROR_AUDIO);
+}
+
+/**
+  * @brief Trigger arduino to do the frequency swipe.
+  * @param None
+  * @retval None
+  */
+static void ArduinoTrigger(void)
+{
+  /* Arduino trigger in every spectrogram */
+  ArduinoTriggerCounter += PCM_BUFFER_SIZE*2;
+
+  /* Trigger arduino after 1056 samples */
+  if (ArduinoTriggerCounter == (PCM_BUFFER_SIZE*2*11)) {
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
+  }
+  /* Stop Arduino after 4224 samples */
+  else if (ArduinoTriggerCounter == (PCM_BUFFER_SIZE*2*11*4)) {
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
+  }
+  else if ((ArduinoTriggerCounter == FRAME_SIZE) && (AudioLogEnabled == 1)) {
+	  ArduinoTriggerCounter = 0;
+  }
 }
 
 /**

@@ -17,7 +17,7 @@
 #define FFT_SIZE         1024
 #define NB_FFTS          32
 #define NB_BINS			 30
-#define FRAME_SIZE       NB_FFTS*(FFT_SIZE/2)+(FFT_SIZE/2)
+#define FRAME_SIZE       16896
 
 /* Exported functions --------------------------------------------------------*/
 void WMC_Init(void);
