@@ -1,3 +1,5 @@
+//! @file audiolog.h
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __AUDIOLOG_H
 #define __AUDIOLOG_H

@@ -1,3 +1,5 @@
+//! @file wmc_processing.c
+
 /* Includes ------------------------------------------------------------------*/
 #include "wmc_processing.h"
 

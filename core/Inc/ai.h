@@ -1,3 +1,5 @@
+//! @file ai.h
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __AI_H
 #define __AI_H

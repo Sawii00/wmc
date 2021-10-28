@@ -1,3 +1,5 @@
+//! @file wmc_processing.h
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef _WMC_H_
 #define _WMC_H_

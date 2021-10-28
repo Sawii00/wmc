@@ -1,3 +1,5 @@
+//! @file main.c
+
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
@@ -97,7 +99,7 @@ static void MainThread(void *argument)
 {
   InitMic();
   /* Initialize trigger for the Arduino Uno */
-  ArduinoTriggerInit();
+//  ArduinoTriggerInit();
   DeInitMic();
 
   enableSem_id = osSemaphoreNew(1U, 0U, NULL);

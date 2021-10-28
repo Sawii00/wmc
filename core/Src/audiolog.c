@@ -1,3 +1,5 @@
+//! @file audiolog.c
+
 /* Includes ------------------------------------------------------------------*/
 #include "audiolog.h"
 
@@ -116,6 +118,9 @@ void AUDIOLOG_Disable(void)
   if(f_close(&AudioFile) != FR_OK) {
     ErrorHandler(ERROR_FATFS);
   }
+
+  /* Set index back to 0 for next saving */
+  AUDIOLOGBufferWriteIndex = 0;
 }
 
 /**

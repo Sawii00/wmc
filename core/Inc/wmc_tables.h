@@ -1,3 +1,5 @@
+//! @file wmc_tables.h
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef _ASC_FEATURESCALER_H_
 #define _ASC_FEATURESCALER_H_
