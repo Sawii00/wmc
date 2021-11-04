@@ -1,7 +1,7 @@
 # WMC (wood moisture classification)
 WMC is an embedded machine learning project for the real-time classification of wood moisture content. The algorithm runs on the STMicroelectronics SensorTile.box evaluation board which is equipped with a 32-bit microcontroller. The project provides code to record the acoustic response of materials upon a frequency swipe, then train a CNN model using python and do real-time classification with an adapted 8-bit version of the model.
 
-This code is a further development of a semester project at the Embedded system laboratory ([ESL](https://www.epfl.ch/labs/esl/)) at EPFL Lausanne. More details are given in [docs/report_semproj.pdf](docs/report_semproj.pdf).
+This code is a further development of a semester project at the Embedded system laboratory ([ESL](https://www.epfl.ch/labs/esl/)) at EPFL Lausanne. More details are given in [docs/report.pdf](docs/report.pdf).
 
 ## How does it work?
 The acoustic response of wood depends on several factors such as density, temperature, thickness, and moisture content. To detect only changes in moisture content a machine learning algorithm can be used to relate these changes to the acoustic transmission in the material. To do so the material is excited by a frequency swipe and the response is recorded and saved to an SD card. The logged audio data is then used to train a CNN model. Currently, the classification differentiates between dry, semi-wet, and wet wood samples.
@@ -40,7 +40,7 @@ The next steps have to be done with the STM32CubeIDE and the [X-Cube-AI](https:/
 5. Load the Keras model and transform it to an 8-bit integer version \
 6. Generate the code \
 7. Copy wmc_data.c and wmc_data.h and replace the corresponding files in the STM32 application \
-8. In wmc_tables.c replace the arrays for the normalization from the ones saved in [model/normalization](model/normalize)
+8. In wmc_tables.c replace the arrays for the normalization from the ones saved in [model/normalize](model/normalize)
 
 9. Build and flash project on the evaluation board
 10. Try real-time prediction using the classification mode on the STM

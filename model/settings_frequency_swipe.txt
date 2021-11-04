@@ -1,0 +1,16 @@
+arduino swipe:
+5300, 5900, 6400,...,22700
+start = 5300
+# steps = 29
+step size = 600 
+
+preprocessing fft bins:
+FFT bins: 5000-5600,5600-6200,...,22400-23000
+start = 5000
+# steps = 30
+step size = 600
+bin size = 600
+
+time:
+frequency swipe = 10*29 = 290ms
+recording time = 16896/48 = 352ms
