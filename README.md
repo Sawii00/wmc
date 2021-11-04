@@ -32,7 +32,7 @@ The important components are grouped as follows:
 
 ## Workflow
 1. Record audio data corresponding to dry, semi-wet, and wet wood samples
-2. Copy and label WAV files in [model/dataset]
+2. Copy and label WAV files in [model/dataset](model/dataset)
 3. Run python pipeline and create Keras model
 
 The next steps have to be done with the STM32CubeIDE and the [X-Cube-AI](https://www.st.com/en/embedded-software/x-cube-ai.html) extension pack: \
@@ -61,7 +61,7 @@ Blue LED means classification mode is on and ready
 The makefile project can be imported, build, and debugged with the STM32CubeIde provided by STMicroelectronics.
 
 For Linux:
-A script is provided in scripts to debug with OpenOCD and arm-none-eabi-gdb using the ST-Link V2. Flashing can be done via USB in DFU mode (hold boot button while connecting the board to PC) or via the ST-Link V2. Whenusing OpenOCD the config file stm32l4plusx.cfg has to be copied to the OpenOCD directory. See this [tutorial]([https://www.plguo.com/posts/stm32/STM32-Development-without-an-IDE/](https://www.plguo.com/posts/stm32/STM32-Development-without-an-IDE/)) to set up the toolchain.
+A script is provided in scripts to debug with OpenOCD and arm-none-eabi-gdb using the ST-Link V2. Flashing can be done via USB in DFU mode (hold boot button while connecting the board to PC) or via the ST-Link V2. When using OpenOCD the config file stm32l4plusx.cfg has to be copied to the OpenOCD directory. See this [tutorial](https://www.plguo.com/posts/stm32/STM32-Development-without-an-IDE) to set up the toolchain.
 
 Note that debugging via the ST-Link is currently not possible because the SWDIO pin is reprogrammed to trigger the frequency swipe of the Arduino.
 
