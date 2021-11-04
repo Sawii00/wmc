@@ -22,10 +22,10 @@ The software is adapted from STMicroelectronics function packs:
 ## File structure
 The important components are grouped as follows:
 
-**core**: STM32 application
-**model**: Pipeline for Keras model creation
-**arduino**: Arduino script for Arduino Uno
-**scripts**: Useful scripts for analyzing and flashing
+**core**: STM32 application \
+**model**: Pipeline for Keras model creation \
+**arduino**: Arduino script for Arduino Uno \
+**scripts**: Useful scripts for analyzing and flashing \
 **docs**: Doxygen and report of semester project
 
   
@@ -35,27 +35,26 @@ The important components are grouped as follows:
 2. Copy and label WAV files in [model/dataset]
 3. Run python pipeline and create Keras model
 
-The next steps have to be done with the STM32CubeIDE and the [X-Cube-AI](https://www.st.com/en/embedded-software/x-cube-ai.html) extension pack:
-4. Create a new project for the SensorTile.box named "wmc"
-5. Load the Keras model and transform it to an 8-bit integer version
-6. Generate the code
-7. Copy wmc_data.c and wmc_data.h and replace the corresponding files in the STM32 application
-8. In wmc_tables.c replace the arrays for the normalization from the ones saved in [model/normalization](model/normalization)
+The next steps have to be done with the STM32CubeIDE and the [X-Cube-AI](https://www.st.com/en/embedded-software/x-cube-ai.html) extension pack: \
+4. Create a new project for the SensorTile.box named "wmc" \
+5. Load the Keras model and transform it to an 8-bit integer version \
+6. Generate the code \
+7. Copy wmc_data.c and wmc_data.h and replace the corresponding files in the STM32 application \
+8. In wmc_tables.c replace the arrays for the normalization from the ones saved in [model/normalization](model/normalize)
 
 9. Build and flash project on the evaluation board
 10. Try real-time prediction using the classification mode on the STM
 
 ## STM32 program flow
 After powering:
-Green LED means audio-logging mode is on and ready
+Green LED means audio-logging mode is on and ready \
 Blue LED means classification mode is on and ready
 
 1. Switch modes with a double click on the user button
 2. Click on the user button to start logging or classification
-
-3a. Audio logging mode will trigger the loudspeaker. Multiple frequency swipes can be saved to the SD card.
-3b. In classification mode one frequency swipe is triggered and the classification result is shown as a blinking LED.
-
+3. Depending on mode
+    1. Audio logging mode will trigger the loudspeaker. Multiple frequency swipes can be saved to the SD card.
+    2. In classification mode one frequency swipe is triggered and the classification result is shown as a blinking LED.
 4.  Run next classification or logging (still buggy)
   
 ## Flashing binaries
@@ -67,5 +66,5 @@ A script is provided in scripts to debug with OpenOCD and arm-none-eabi-gdb usin
 Note that debugging via the ST-Link is currently not possible because the SWDIO pin is reprogrammed to trigger the frequency swipe of the Arduino.
 
 ## Contributors
-Moritz Waldleben
-Giulio Masinelli 
+Moritz Waldleben \
+Giulio Masinelli
