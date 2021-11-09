@@ -87,12 +87,12 @@ void AUDIOLOG_Enable(void)
   /* Write audio header */
   uint32_t byteswritten; /* written byte count */
   if(f_write(&AudioFile, (uint8_t*)pAudioHeader, sizeof(pAudioHeader), (void *)&byteswritten) != FR_OK) {
-	ErrorHandler(ERROR_FATFS);
+    ErrorHandler(ERROR_FATFS);
   }
 
   /* Flush the cached information (pAudioHeader) */
   if(f_sync(&AudioFile) != FR_OK) {
-	ErrorHandler(ERROR_FATFS);
+    ErrorHandler(ERROR_FATFS);
   }
 }
 
@@ -166,7 +166,7 @@ void AUDIOLOG_Save2SD(void)
 
 /**
   * @brief  Save for the buffer used forclassification to SD WAV file
-  * @param  at_end	Check if if at end of STFT algorithm
+  * @param  at_end  Check if if at end of STFT algorithm
   * @retval None
   */
 void AUDIOLOG_ClassificationSave2SD(uint8_t at_end)
@@ -175,7 +175,7 @@ void AUDIOLOG_ClassificationSave2SD(uint8_t at_end)
    * aswell (which are not overlapping in the STFT algorithm) */
   uint16_t length = FFT_SIZE / 2;
   if(at_end == 1) {
-	length = FFT_SIZE;
+    length = FFT_SIZE;
   }
 
   uint32_t bytes_written; /* Written byte count */
@@ -272,7 +272,7 @@ void WAV_HeaderInit(void)
 
 /**
   * @brief  Update the header file after the recording was stopped
-  * @param  len		updated file length
+  * @param  len     updated file length
   * @retval None
   */
 void WAV_HeaderUpdate(uint32_t len)

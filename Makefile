@@ -86,7 +86,6 @@ middlewares/Third_Party/FatFs/src/diskio.c \
 drivers/BSP/SensorTile.box/SensorTile.box.c \
 drivers/BSP/SensorTile.box/SensorTile.box_audio.c \
 drivers/BSP/SensorTile.box/SensorTile.box_sd.c \
-syscalls.c \
 
 # ASM sources
 ASM_SOURCES =  \

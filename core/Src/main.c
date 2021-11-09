@@ -13,6 +13,7 @@ osSemaphoreId_t AUDIOLOGSem_id;
 osSemaphoreId_t WMCSem_id;
 
 /* Private variables ---------------------------------------------------------*/
+uint8_t DoubleClick = 0;
 uint8_t ChangeApplicationMode = 0;
 uint8_t AudioLogEnabled = 1;
 uint8_t WMCEnabled = 0;
@@ -21,10 +22,6 @@ static volatile uint32_t ArduinoTriggerCounter = 0;
 
 /* Semaphore to enable wmc or audio logging */
 osSemaphoreId_t enableSem_id;
-
-/* Timer to detect a double click */
-uint8_t DoubleClick = 0;
-osTimerId_t doubleClickTimer_id;
 
 /* Main thread definition */
 osThreadId_t mainThread_id;
@@ -41,7 +38,6 @@ BSP_AUDIO_Init_t MicParams;
 static void MainThread(void *argument);
 static void ArduinoTrigger(void);
 static void ArduinoTriggerInit(void);
-static void DoubleClickTimerCallback(void *argument);
 static void SystemClock_Config(void);
 
 /* Init/deinit microphones */
@@ -79,6 +75,9 @@ int main(void)
   /* Initialize WMC alogrithm */
   WMC_Init();
 
+  /* Initialize trigger for the Arduino Uno */
+  ArduinoTriggerInit();
+
   /* Init scheduler */
   osKernelInitialize();
 
@@ -97,16 +96,9 @@ int main(void)
 
 static void MainThread(void *argument)
 {
-  InitMic();
-  /* Initialize trigger for the Arduino Uno */
-//  ArduinoTriggerInit();
-  DeInitMic();
-
   enableSem_id = osSemaphoreNew(1U, 0U, NULL);
   AUDIOLOGSem_id = osSemaphoreNew(1U, 0U, NULL);
   WMCSem_id = osSemaphoreNew(1U, 0U, NULL);
-
-  doubleClickTimer_id = osTimerNew(DoubleClickTimerCallback, osTimerOnce, (void *)0, NULL);
 
   /* Show everything is ready: default is audio logging */
   BSP_LED_On(LED_GREEN);
@@ -114,90 +106,92 @@ static void MainThread(void *argument)
   for (;;) {
     /* Wait until user buton releases semaphore */
     osSemaphoreAcquire(enableSem_id, osWaitForever);
-    osDelay(600);
 
-    /****Change application mode when double click on user button****/
+	/* Wait if there is a double click */
+    osDelay(500);
+	DoubleClick = 0;
+
+	/****Change application mode when double click on user button****/
     if(ChangeApplicationMode == 1) {
       if(WMCEnabled == 1) {
         AudioLogEnabled = 1;
-		WMCEnabled = 0;
+        WMCEnabled = 0;
 
-		/* Green LED shows that audio logging mode is on */
-		BSP_LED_Off(LED_BLUE);
-		BSP_LED_On(LED_GREEN);
-		}
-		else {
-		WMCEnabled = 1;
-		  AudioLogEnabled = 0;
+        /* Green LED shows that audio logging mode is on */
+        BSP_LED_Off(LED_BLUE);
+        BSP_LED_On(LED_GREEN);
+      }
+      else {
+        WMCEnabled = 1;
+        AudioLogEnabled = 0;
 
-	/* BLUE LED shows that classification mode is on */
-	BSP_LED_Off(LED_GREEN);
-	BSP_LED_On(LED_BLUE);
+        /* BLUE LED shows that classification mode is on */
+        BSP_LED_Off(LED_GREEN);
+        BSP_LED_On(LED_BLUE);
       }
 
       ChangeApplicationMode = 0;
     }
     /****Run application****/
     else {
+      /* Run audio logging */
       if(AudioLogEnabled == 1) {
-		osDelay(2000);
-		/* Blue LED on while recording */
+        /* Blue LED on while recording */
         BSP_LED_On(LED_BLUE);
+        osDelay(2000);
 
-		ArduinoTriggerCounter = 0;
-		AUDIOLOG_Enable();
-		StartRecording();
+        ArduinoTriggerCounter = 0;
+        AUDIOLOG_Enable();
+        StartRecording();
 
-		/* TODO: Change to own function? AUDIOLOG_Acquisition?
-		 * On the other hand this way things are simpler */
-		/* Acquisition and saving of samples */
-		/* Saving to SD card happens currently every 48*64/2=1536 samples
-		 * with 48kHz sampling thus every 32ms */
-		uint32_t nb_saves = FRAME_SIZE / 1536 * NB_FRAMES;
+        /* TODO: Change to own function? AUDIOLOG_Acquisition?
+         * On the other hand this way things are simpler */
+        /* Acquisition and saving of samples */
+        /* Saving to SD card happens currently every 48*64/2=1536 samples
+         * with 48kHz sampling thus every 32ms */
+        uint32_t nb_saves = FRAME_SIZE / 1536 * NB_FRAMES;
         for(int i=0; i<nb_saves; i++) {
           osSemaphoreAcquire(AUDIOLOGSem_id, osWaitForever);
           AUDIOLOG_Save2SD();
         }
-		StopRecording();
-		AUDIOLOG_Disable();
+        StopRecording();
+        AUDIOLOG_Disable();
 
-		BSP_LED_Off(LED_BLUE);
+        BSP_LED_Off(LED_BLUE);
       }
+      /* Run wood moisture classification algorithm */
       else {
-        /* Run wood moisture classification algorithm */
+        /* Green LED while processing */
+        BSP_LED_On(LED_GREEN);
         osDelay(2000);
-		BSP_LED_On(LED_GREEN);
 
-		ArduinoTriggerCounter = 0;
-		AUDIOLOG_Enable();
-		StartRecording();
+        ArduinoTriggerCounter = 0;
+        AUDIOLOG_Enable();
+        StartRecording();
 
-		/* TODO: Change to own function? WMC_Acquisition? */
-		/* Acquisition and saving of samples */
-		for(int i=0; i<NB_FFTS; i++) {
-		  osSemaphoreAcquire(WMCSem_id, osWaitForever);
+        /* TODO: Change to own function? WMC_Acquisition? */
+        /* Acquisition and saving of samples */
+        for(int i=0; i<NB_FFTS; i++) {
+          osSemaphoreAcquire(WMCSem_id, osWaitForever);
 
-		  /* Check for last if last FFT window */
-		  uint8_t at_end = 0;
-		  if (i==31) {
-			  at_end = 1;
-		  }
+          /* Check for last if last FFT window */
+          uint8_t at_end = 0;
+          if (i==31) {
+              at_end = 1;
+          }
 
-		  AUDIOLOG_ClassificationSave2SD(at_end);
-		  WMC_Process();
-		}
+          AUDIOLOG_ClassificationSave2SD(at_end);
+          WMC_Process();
+        }
 
-		StopRecording();
-		AUDIOLOG_Disable();
+        StopRecording();
+        AUDIOLOG_Disable();
 
-		ai_float cnn_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
-		WMC_Run(cnn_out);
+        ai_float cnn_out[AI_WMC_OUT_1_SIZE] = {0.0, 0.0, 0.0};
+        WMC_Run(cnn_out);
 
-		BSP_LED_Off(LED_GREEN);
-		BSP_LED_Off(LED_BLUE);
-
-		WMC_ClassificationResult(cnn_out);
-		BSP_LED_On(LED_GREEN);
+        WMC_ClassificationResult(cnn_out);
+        BSP_LED_Off(LED_GREEN);
       }
     }
   }
@@ -263,7 +257,7 @@ void StopRecording(void)
   * @retval None
   */
 void BSP_AUDIO_IN_HalfTransfer_CallBack(uint32_t Instance) {
-	if(AudioLogEnabled == 1) {
+    if(AudioLogEnabled == 1) {
     AUDIOLOG_RecordingProcess(PCMBuffer);
   }
   else {
@@ -310,14 +304,14 @@ static void ArduinoTrigger(void)
 
   /* Trigger arduino after 1056 samples */
   if (ArduinoTriggerCounter == (PCM_BUFFER_SIZE*2*11)) {
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
   }
   /* Stop Arduino after 4224 samples */
   else if (ArduinoTriggerCounter == (PCM_BUFFER_SIZE*2*11*4)) {
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
   }
   else if ((ArduinoTriggerCounter == FRAME_SIZE) && (AudioLogEnabled == 1)) {
-	  ArduinoTriggerCounter = 0;
+      ArduinoTriggerCounter = 0;
   }
 }
 
@@ -342,16 +336,6 @@ static void ArduinoTriggerInit(void)
 }
 
 /**
-  * @brief Double click on user button callback function
-  * @param None
-  * @retval None
-  */
-static void DoubleClickTimerCallback (void *argument)
-{
-  DoubleClick = 0;
-}
-
-/**
   * @brief  EXTI line detection callback.
   * @param  uint16_t GPIO_Pin Specifies the pin connected EXTI line
   * @retval None
@@ -359,16 +343,14 @@ static void DoubleClickTimerCallback (void *argument)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   if(GPIO_Pin == KEY_BUTTON_PIN) {
-//    if(DoubleClick == 1) {
-//      osTimerDelete(doubleClickTimer_id);
-//      DoubleClick = 0;
-//      ChangeApplicationMode = 1;
-//    }
-//    else {
-//      osTimerStart(doubleClickTimer_id, 500U);
+    if(DoubleClick == 1) {
+      DoubleClick = 0;
+      ChangeApplicationMode = 1;
+    }
+    else {
       osSemaphoreRelease(enableSem_id);
-//      DoubleClick = 1;
-//    }
+      DoubleClick = 1;
+    }
   }
 }
 

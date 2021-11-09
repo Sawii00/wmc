@@ -151,6 +151,10 @@ void WMC_Run(float32_t *pCNNOut)
   */
 void WMC_ClassificationResult(float32_t *pCNNOut)
 {
+  /* Turn off LEDs */
+  BSP_LED_Off(LED_GREEN);
+  BSP_LED_Off(LED_BLUE);
+
   float32_t max_out;
   uint32_t classification_result;
 
@@ -168,7 +172,7 @@ void WMC_ClassificationResult(float32_t *pCNNOut)
     if(classification_result == 0) {
       for(uint32_t i = 0; i<5; i++) {
         BSP_LED_On(LED_GREEN);
-      	HAL_Delay(500);
+		HAL_Delay(500);
         BSP_LED_Off(LED_GREEN);
         HAL_Delay(250);
       }
@@ -176,7 +180,7 @@ void WMC_ClassificationResult(float32_t *pCNNOut)
     if(classification_result == 1) {
       for(uint32_t i = 0; i<5; i++) {
         BSP_LED_On(LED_BLUE);
-      	HAL_Delay(500);
+		HAL_Delay(500);
         BSP_LED_Off(LED_BLUE);
         HAL_Delay(250);
       }
@@ -184,7 +188,7 @@ void WMC_ClassificationResult(float32_t *pCNNOut)
     if(classification_result == 2) {
       for(uint32_t i = 0; i<5; i++) {
         BSP_LED_On(LED_RED);
-      	HAL_Delay(500);
+		HAL_Delay(500);
         BSP_LED_Off(LED_RED);
         HAL_Delay(250);
       }
@@ -207,7 +211,7 @@ static void NormalizeFeatures(float32_t *pSpectrogram)
 /**
   * @brief  FFT to get a spectrogram column
   * @param  pInSignal
-	* @param	pOutCol
+  * @param	pOutCol
   * @retval None
   */
 static void SpectrogramColumn(float32_t *pInSignal, float32_t *pOutCol)
@@ -237,10 +241,10 @@ static void SpectrogramColumn(float32_t *pInSignal, float32_t *pOutCol)
 }
 
 /**
- * @brief	Filter FFT values into bins
- * @param   *pSpectrCol points to the input spectrogram
- * @retval	None
- */
+  * @brief	Filter FFT values into bins
+  * @param   *pSpectrCol points to the input spectrogram
+  * @retval	None
+  */
 static void FilterBank(float32_t *pSpectrCol, float32_t *pFilterCol)
 {
   uint16_t start_idx;
@@ -261,11 +265,11 @@ static void FilterBank(float32_t *pSpectrCol, float32_t *pFilterCol)
 }
 
 /**
- * @brief	Store indices for filter bins in arrays
- * @param   *pFilterStartIndices
- * @param   *pFilterStopIndices
- * @retval	None
- */
+  * @brief	Store indices for filter bins in arrays
+  * @param   *pFilterStartIndices
+  * @param   *pFilterStopIndices
+  * @retval	None
+  */
 static void FilterBankInit(uint32_t *pFilterStartIndices, uint32_t *pFilterStopIndices)
 {
 	uint16_t start_idx = 107; /* 48000 / 1024 * i > 5000 */
@@ -281,10 +285,10 @@ static void FilterBankInit(uint32_t *pFilterStartIndices, uint32_t *pFilterStopI
 		  freq_bin = 5300.0 + i * 600.0;
 
 		  if (fabs(freq_bin-fft_freq) > 300.0) {
-		    start_idx = j;
-		    FilterStopIndices[i] = j;
+			start_idx = j;
+			FilterStopIndices[i] = j;
 			break;
-	    }
+		}
     }
 	}
 }
