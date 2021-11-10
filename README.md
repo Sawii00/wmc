@@ -8,7 +8,7 @@ The acoustic response of wood depends on several factors such as density, temper
 
 Note that this codebase could be used to analyze and classify other material properties upon the response of acoustic stimuli.
 
-## Hardware and Software
+## Hardware and sofware
 For the experimental setup see the report. The following components are used: 
 
 * Steval MKSBOX1V1 (SensoreTile.box)
@@ -27,17 +27,17 @@ The important components are grouped as follows:
 **arduino**: Arduino script for Arduino Uno \
 **scripts**: Useful scripts for analyzing and flashing \
 **docs**: Doxygen and report of semester project
-
   
-
 ## Workflow
+Note that the frequency swipe settings for the recording and emission have to match. See the [frequency swipe settings](model/settings_frequency_swipe.txt).
+
 1. Record audio data corresponding to dry, semi-wet, and wet wood samples
 2. Copy and label WAV files in [model/dataset](model/dataset)
 3. Run python pipeline and create Keras model
 
 The next steps have to be done with the STM32CubeIDE and the [X-Cube-AI](https://www.st.com/en/embedded-software/x-cube-ai.html) extension pack: \
 4. Create a new project for the SensorTile.box named "wmc" \
-5. Load the Keras model and transform it to an 8-bit integer version \
+5. Load the _Keras_ model and transform it to an 8-bit integer version \
 6. Generate the code \
 7. Copy wmc_data.c and wmc_data.h and replace the corresponding files in the STM32 application \
 8. In wmc_tables.c replace the arrays for the normalization from the ones saved in [model/normalize](model/normalize)
@@ -64,6 +64,16 @@ For Linux:
 A script is provided in scripts to debug with OpenOCD and arm-none-eabi-gdb using the ST-Link V2. Flashing can be done via USB in DFU mode (hold boot button while connecting the board to PC) or via the ST-Link V2. When using OpenOCD the config file stm32l4plusx.cfg has to be copied to the OpenOCD directory. See this [tutorial](https://www.plguo.com/posts/stm32/STM32-Development-without-an-IDE) to set up the toolchain.
 
 Note that debugging via the ST-Link is currently not possible because the SWDIO pin is reprogrammed to trigger the frequency swipe of the Arduino.
+
+## Versions of libraries
+* X-Cube-AI V7.0.0
+* CMSIS RTOS V2
+* FatFs, ST-Version V2.1.2
+
+Python libraries:
+* Tensor Flow V2.4.1
+* Keras V2.4.3
+* Librosa V0.8.1
 
 ## Contributors
 Moritz Waldleben \
