@@ -1,7 +1,7 @@
 # WMC (wood moisture classification)
 WMC is an embedded machine learning project for the real-time classification of wood moisture content. The algorithm runs on the STMicroelectronics SensorTile.box evaluation board which is equipped with a 32-bit microcontroller. The project provides code to record the acoustic response of materials upon a frequency swipe, then train a CNN model using python and do real-time classification with an adapted 8-bit version of the model.
 
-This code is a further development of a semester project at the Embedded system laboratory ([ESL](https://www.epfl.ch/labs/esl/)) at EPFL Lausanne and in collaboration EMPA Thun. More details are given in [docs/report.pdf](docs/report.pdf).
+This code is a further development of a semester project at the Embedded system laboratory ([ESL](https://www.epfl.ch/labs/esl/)) at EPFL Lausanne and in collaboration with EMPA Thun. More details are given in [docs/report.pdf](docs/report.pdf).
 
 ## How does it work?
 The acoustic response of wood depends on several factors such as density, temperature, thickness, and moisture content. To detect only changes in moisture content a machine learning algorithm can be used to relate these changes to the acoustic transmission in the material. To do so the material is excited by a frequency swipe and the response is recorded and saved to an SD card. The logged audio data is then used to train a CNN model. Currently, the classification differentiates between dry, semi-wet, and wet wood samples.
