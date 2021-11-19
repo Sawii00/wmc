@@ -108,7 +108,7 @@ Functions</h2></td></tr>
 <tr class="memdesc:ab1526075002719629650533af9163b16"><td class="mdescLeft">&#160;</td><td class="mdescRight">Save processed audio buffer to SD WAV file.  <a href="audiolog_8c.html#ab1526075002719629650533af9163b16">More...</a><br /></td></tr>
 <tr class="separator:ab1526075002719629650533af9163b16"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a89bd971a756364e9cee8c7be8f705b5a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="audiolog_8c.html#a89bd971a756364e9cee8c7be8f705b5a">AUDIOLOG_ClassificationSave2SD</a> (uint8_t at_end)</td></tr>
-<tr class="memdesc:a89bd971a756364e9cee8c7be8f705b5a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Save for the buffer used forclassification to SD WAV file.  <a href="audiolog_8c.html#a89bd971a756364e9cee8c7be8f705b5a">More...</a><br /></td></tr>
+<tr class="memdesc:a89bd971a756364e9cee8c7be8f705b5a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Save for the buffer used for classification to SD WAV file.  <a href="audiolog_8c.html#a89bd971a756364e9cee8c7be8f705b5a">More...</a><br /></td></tr>
 <tr class="separator:a89bd971a756364e9cee8c7be8f705b5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
@@ -122,6 +122,12 @@ uint16_t&#160;</td><td class="memItemRight" valign="bottom"><b>WMCBuffer</b> []<
 <tr class="memitem:a85ea99670bc08169c95c4019b1aa8db8"><td class="memItemLeft" align="right" valign="top"><a id="a85ea99670bc08169c95c4019b1aa8db8" name="a85ea99670bc08169c95c4019b1aa8db8"></a>
 osSemaphoreId_t&#160;</td><td class="memItemRight" valign="bottom"><b>AUDIOLOGSem_id</b></td></tr>
 <tr class="separator:a85ea99670bc08169c95c4019b1aa8db8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adf9089026c86db76c344fd7dd7be4bf4"><td class="memItemLeft" align="right" valign="top"><a id="adf9089026c86db76c344fd7dd7be4bf4" name="adf9089026c86db76c344fd7dd7be4bf4"></a>
+uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>AUDIOLOGBufferWriteIndex</b> = 0</td></tr>
+<tr class="separator:adf9089026c86db76c344fd7dd7be4bf4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a768ea3736c790b4f2b1930b9d5b5bca1"><td class="memItemLeft" align="right" valign="top"><a id="a768ea3736c790b4f2b1930b9d5b5bca1" name="a768ea3736c790b4f2b1930b9d5b5bca1"></a>
+volatile uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>AUDIOLOGBufferReadIndex</b> = 0</td></tr>
+<tr class="separator:a768ea3736c790b4f2b1930b9d5b5bca1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function Documentation</h2>
 <a id="a89bd971a756364e9cee8c7be8f705b5a" name="a89bd971a756364e9cee8c7be8f705b5a"></a>
@@ -140,7 +146,7 @@ osSemaphoreId_t&#160;</td><td class="memItemRight" valign="bottom"><b>AUDIOLOGSe
       </table>
 </div><div class="memdoc">
 
-<p>Save for the buffer used forclassification to SD WAV file. </p>
+<p>Save for the buffer used for classification to SD WAV file. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">at_end</td><td>Check if if at end of STFT algorithm </td></tr>

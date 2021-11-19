@@ -24,8 +24,8 @@ static char SDPath[4]; /* SD card logical drive path */
 
 /* Process buffer for audio logging */
 static uint16_t AUDIOLOGBuffer[AUDIOLOG_BUFFER_SIZE];
-static uint32_t AUDIOLOGBufferWriteIndex = 0;
-static volatile uint32_t AUDIOLOGBufferReadIndex = 0;
+uint32_t AUDIOLOGBufferWriteIndex = 0;
+volatile uint32_t AUDIOLOGBufferReadIndex = 0;
 
 static uint8_t pAudioHeader[44];
 
@@ -118,9 +118,6 @@ void AUDIOLOG_Disable(void)
   if(f_close(&AudioFile) != FR_OK) {
     ErrorHandler(ERROR_FATFS);
   }
-
-  /* Set index back to 0 for next saving */
-  AUDIOLOGBufferWriteIndex = 0;
 }
 
 /**
@@ -165,7 +162,7 @@ void AUDIOLOG_Save2SD(void)
 }
 
 /**
-  * @brief  Save for the buffer used forclassification to SD WAV file
+  * @brief  Save for the buffer used for classification to SD WAV file
   * @param  at_end  Check if if at end of STFT algorithm
   * @retval None
   */
@@ -173,9 +170,9 @@ void AUDIOLOG_ClassificationSave2SD(uint8_t at_end)
 {
   /* Check if end of STFT to store the remaining samples
    * aswell (which are not overlapping in the STFT algorithm) */
-  uint16_t length = FFT_SIZE / 2;
+  uint16_t length = FRAME_SIZE / 2;
   if(at_end == 1) {
-    length = FFT_SIZE;
+    length = FRAME_SIZE;
   }
 
   uint32_t bytes_written; /* Written byte count */

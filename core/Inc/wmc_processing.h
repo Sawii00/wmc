@@ -16,10 +16,10 @@
 #include "ai_platform.h"
 
 /* Exported defines ----------------------------------------------------------*/
-#define FFT_SIZE         1024
-#define NB_FFTS          32
-#define NB_BINS			 30
-#define FRAME_SIZE       16896
+#define FRAME_SIZE		1024
+#define NB_FRAMES       32
+#define NB_BINS			30
+#define WINDOW_SIZE     16896
 
 /* Exported functions --------------------------------------------------------*/
 void WMC_Init(void);

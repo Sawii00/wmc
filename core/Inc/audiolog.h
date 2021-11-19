@@ -23,7 +23,7 @@ extern "C" {
 
 
 /* Exported defines ----------------------------------------------------------*/
-#define NB_FRAMES 20 /* Number of recorded frames */
+#define NB_WINDOWS 4 /* Number of recorded windows */
 
 /* Exported functions prototypes ---------------------------------------------*/
 void AUDIOLOG_SDInit(void);

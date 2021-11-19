@@ -110,12 +110,18 @@ uint16_t&#160;</td><td class="memItemRight" valign="bottom"><b>PCMBuffer</b> []<
 <tr class="memitem:a514f001125d6bfe60c99814bfe33e1f9"><td class="memItemLeft" align="right" valign="top"><a id="a514f001125d6bfe60c99814bfe33e1f9" name="a514f001125d6bfe60c99814bfe33e1f9"></a>
 osSemaphoreId_t&#160;</td><td class="memItemRight" valign="bottom"><b>WMCSem_id</b></td></tr>
 <tr class="separator:a514f001125d6bfe60c99814bfe33e1f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0f7bdef70d72c99546cbccc48817e905"><td class="memItemLeft" align="right" valign="top"><a id="a0f7bdef70d72c99546cbccc48817e905" name="a0f7bdef70d72c99546cbccc48817e905"></a>
-int16_t&#160;</td><td class="memItemRight" valign="bottom"><b>WMCBuffer</b> [FFT_SIZE *2]</td></tr>
-<tr class="separator:a0f7bdef70d72c99546cbccc48817e905"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5f8a9917f18d50ac5c50b7e4976b622f"><td class="memItemLeft" align="right" valign="top"><a id="a5f8a9917f18d50ac5c50b7e4976b622f" name="a5f8a9917f18d50ac5c50b7e4976b622f"></a>
-float32_t&#160;</td><td class="memItemRight" valign="bottom"><b>WorkingBuffer</b> [FFT_SIZE]</td></tr>
-<tr class="separator:a5f8a9917f18d50ac5c50b7e4976b622f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4af6e9c7d557b7e10cf7b0fd8e411730"><td class="memItemLeft" align="right" valign="top"><a id="a4af6e9c7d557b7e10cf7b0fd8e411730" name="a4af6e9c7d557b7e10cf7b0fd8e411730"></a>
+int16_t&#160;</td><td class="memItemRight" valign="bottom"><b>WMCBuffer</b> [FRAME_SIZE *2]</td></tr>
+<tr class="separator:a4af6e9c7d557b7e10cf7b0fd8e411730"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a44d5589fe4cf017a9835fcc509b16f98"><td class="memItemLeft" align="right" valign="top"><a id="a44d5589fe4cf017a9835fcc509b16f98" name="a44d5589fe4cf017a9835fcc509b16f98"></a>
+uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>WMCBufferWriteIndex</b></td></tr>
+<tr class="separator:a44d5589fe4cf017a9835fcc509b16f98"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ace1433e395a071949023149399792ec7"><td class="memItemLeft" align="right" valign="top"><a id="ace1433e395a071949023149399792ec7" name="ace1433e395a071949023149399792ec7"></a>
+volatile uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>WMCCutOffSamples</b> = 0</td></tr>
+<tr class="separator:ace1433e395a071949023149399792ec7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a35d430f687e27322425833a817879021"><td class="memItemLeft" align="right" valign="top"><a id="a35d430f687e27322425833a817879021" name="a35d430f687e27322425833a817879021"></a>
+float32_t&#160;</td><td class="memItemRight" valign="bottom"><b>WorkingBuffer</b> [FRAME_SIZE]</td></tr>
+<tr class="separator:a35d430f687e27322425833a817879021"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a946c95a3f7d4966c596dffd51babab82"><td class="memItemLeft" align="right" valign="top"><a id="a946c95a3f7d4966c596dffd51babab82" name="a946c95a3f7d4966c596dffd51babab82"></a>
 uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>FilterStartIndices</b> [30]</td></tr>
 <tr class="separator:a946c95a3f7d4966c596dffd51babab82"><td class="memSeparator" colspan="2">&#160;</td></tr>

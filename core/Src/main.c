@@ -19,6 +19,10 @@ uint8_t AudioLogEnabled = 1;
 uint8_t WMCEnabled = 0;
 
 static volatile uint32_t ArduinoTriggerCounter = 0;
+extern uint16_t AUDIOLOGBufferWriteIndex;
+extern volatile uint16_t AUDIOLOGBufferReadIndex;
+extern uint16_t WMCBufferWriteIndex;
+extern volatile uint16_t WMCCutOffSamples;
 
 /* Semaphore to enable wmc or audio logging */
 osSemaphoreId_t enableSem_id;
@@ -140,7 +144,11 @@ static void MainThread(void *argument)
         BSP_LED_On(LED_BLUE);
         osDelay(2000);
 
+		/* Set counters back to 0 */
         ArduinoTriggerCounter = 0;
+		AUDIOLOGBufferWriteIndex = 0;
+		AUDIOLOGBufferReadIndex = 0;
+
         AUDIOLOG_Enable();
         StartRecording();
 
@@ -149,7 +157,7 @@ static void MainThread(void *argument)
         /* Acquisition and saving of samples */
         /* Saving to SD card happens currently every 48*64/2=1536 samples
          * with 48kHz sampling thus every 32ms */
-        uint32_t nb_saves = FRAME_SIZE / 1536 * NB_FRAMES;
+        uint32_t nb_saves = WINDOW_SIZE / 1536 * NB_WINDOWS;
         for(int i=0; i<nb_saves; i++) {
           osSemaphoreAcquire(AUDIOLOGSem_id, osWaitForever);
           AUDIOLOG_Save2SD();
@@ -165,13 +173,19 @@ static void MainThread(void *argument)
         BSP_LED_On(LED_GREEN);
         osDelay(2000);
 
+		/* Set counters back to 0 */
         ArduinoTriggerCounter = 0;
+		AUDIOLOGBufferWriteIndex = 0;
+		AUDIOLOGBufferReadIndex = 0;
+		WMCBufferWriteIndex = 0;
+		WMCCutOffSamples = 0;
+
         AUDIOLOG_Enable();
         StartRecording();
 
         /* TODO: Change to own function? WMC_Acquisition? */
         /* Acquisition and saving of samples */
-        for(int i=0; i<NB_FFTS; i++) {
+        for(int i=0; i<NB_FRAMES; i++) {
           osSemaphoreAcquire(WMCSem_id, osWaitForever);
 
           /* Check for last if last FFT window */
@@ -192,6 +206,7 @@ static void MainThread(void *argument)
 
         WMC_ClassificationResult(cnn_out);
         BSP_LED_Off(LED_GREEN);
+		BSP_LED_On(LED_BLUE);
       }
     }
   }

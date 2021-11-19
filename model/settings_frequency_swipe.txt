@@ -12,5 +12,5 @@ step size = 600
 bin size = 600
 
 time:
-frequency swipe = 10*30 = 300ms
+frequency swipe = 5*30 = 150ms
 recording time = 16896/48 = 352ms
