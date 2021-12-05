@@ -57,11 +57,11 @@ Blue LED means classification mode is on and ready
 4.  Run next classification or logging
   
 ## Flashing binaries
-On Windows:
-The makefile project can be imported, build, and debugged with the STM32CubeIde provided by STMicroelectronics.
-
 On Linux:
 A script is provided in scripts to debug with OpenOCD and arm-none-eabi-gdb using the ST-Link V2. Flashing can be done via USB in DFU mode (hold boot button while connecting the board to PC) or via the ST-Link V2. When using OpenOCD the config file stm32l4plusx.cfg has to be copied to the OpenOCD directory. See this [tutorial](https://www.plguo.com/posts/stm32/STM32-Development-without-an-IDE) to set up the toolchain.
+
+On Windows:
+The makefile project can be imported in STM32CubeIde provided by STMicroelectronics. To set up a toolchain for OpenOCD follow this [tutorial](https://www.youtube.com/watch?v=PxQw5_7yI8Q). Use the [OpenOCD](https://github.com/STMicroelectronics/OpenOCD) version of STMicroelectronics instead and copy the config file as specified for Linux.
 
 Note that debugging via the ST-Link is currently not possible because the SWDIO pin is reprogrammed to trigger the frequency swipe of the Arduino.
 
